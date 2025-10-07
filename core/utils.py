@@ -1,6 +1,8 @@
 import math
 from datetime import date
 from io import BytesIO
+import cv2
+from pyzbar import pyzbar
 
 def calcBmi(weightKg, heightCm):
     heightMeter = heightCm / 100.0
@@ -44,3 +46,10 @@ def proteinTarget(weightkg, goal):
         gPerKg = 1
     grams = round(weightkg * gPerKg)
     return grams
+
+def barcodeScanner():
+    cap = cv2.VideoCapture(0)
+    pass
+
+def generateFitnessPlan(x,y):
+    pass
