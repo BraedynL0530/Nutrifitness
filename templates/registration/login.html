@@ -1,0 +1,19 @@
+{%  extends 'Home.html' %}
+{% block title  %}Login Here{% endblock %}
+{% block content %}
+    <form method="post" class ='form-group'>
+    {% csrf_token %}
+        <h1>Login</h1>
+        <div class="form-group">
+            <label for="username">Username</label>
+            <input type="text" class="form-control" id="username" name="username" placeholder="Enter username">
+        </div>
+        <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" class="form-control" id="password" name="password" placeholder="Enter password">
+        </div>
+    <div class="form-group">
+        <button type="submit" class="btn btn-primary">Login</button>
+        </div>
+    </form>
+{% endblock %}
