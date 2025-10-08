@@ -21,6 +21,8 @@ from core import views
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('register/', views.register, name='register'),
+    path('questionnaire-post', views.questionnaireData, name='questionnaire-post'),
+    path('More-About-You', views.questionnaire, name='questionnaire'),
     path('', include('django.contrib.auth.urls')),
     path('', include('core.urls'))
 ]

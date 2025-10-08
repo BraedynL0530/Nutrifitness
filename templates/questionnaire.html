@@ -1,10 +1,65 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Title</title>
+    <title>NutriFitness Questionnaire</title>
+    <link rel="stylesheet" href="{% static 'questionnaire.css' %}">
 </head>
 <body>
+    <header>
+        <h1>NutriFitness Setup</h1>
+    </header>
 
+    <main>
+        <div id="question-container">
+            <!-- Sex question -->
+            <div class="question-card" data-required="true">
+                <h2>What is your sex?</h2>
+                <div class="sex-buttons">
+                    <button class="sex-option" data-value="male">♂ Male</button>
+                    <button class="sex-option" data-value="female">♀ Female</button>
+                </div>
+            </div>
+
+            <!-- Height -->
+            <div class="question-card" data-required="true">
+                <h2>What is your height (cm)?</h2>
+                <input type="number" id="height" placeholder="Enter height">
+            </div>
+
+            <!-- Weight -->
+            <div class="question-card" data-required="true">
+                <h2>What is your weight (kg)?</h2>
+                <input type="number" id="weight" placeholder="Enter weight">
+            </div>
+
+            <!-- Max lifts -->
+            <div class="question-card" data-required="false">
+                <h2>Enter your max lifts (optional):</h2>
+                <input type="number" id="bench" placeholder="Bench press (kg)">
+                <input type="number" id="squat" placeholder="Squat (kg)">
+                <input type="number" id="deadlift" placeholder="Deadlift (kg)">
+            </div>
+
+            <!-- Activity level -->
+            <div class="question-card" data-required="true">
+                <h2>How active are you?</h2>
+                <div class="activity-buttons">
+                    <button class="activity-option" data-value="Sedentary">Sedentary</button>
+                    <button class="activity-option" data-value="Lightly active">Lightly active</button>
+                    <button class="activity-option" data-value="Moderately active">Moderately active</button>
+                    <button class="activity-option" data-value="Very active">Very active</button>
+                    <button class="activity-option" data-value="Extremely active">Extremely active</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <button id="next-btn">Next</button>
+    </footer>
+
+    <script src="{% static 'questionnaire.js' %}"></script>
 </body>
 </html>

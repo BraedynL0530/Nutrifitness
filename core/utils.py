@@ -48,8 +48,7 @@ def proteinTarget(weightkg, goal):
     return grams
 
 def barcodeScanner():
-    cap = cv2.VideoCapture(0)
-    pass
+    return
 
 def generateFitnessPlan(x,y):
-    pass
+    return
