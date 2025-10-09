@@ -6,6 +6,7 @@ from django.shortcuts import render, redirect
 from django.contrib.auth import login, authenticate
 from django.contrib.auth.forms import UserCreationForm
 from django.views.decorators.csrf import csrf_exempt
+from models import FitnessProfile
 
 from . import utils
 # Create your views here.
@@ -32,20 +33,39 @@ def questionnaire(request):
 def questionnaireData(request):
     if request.method == 'POST':
         data = json.loads(request.body)
+
         heightCm = data.get('height')
         weightKg = data.get('weight')
         sex = data.get('sex')
         lifeStyle = data.get('activity_level')
         maxes = {
-            'bench': data.getdata.get('bench'),
-            'squat': data.get('squat'),
-            'deadlift': data.get('deadlift')
+            'bench': data.getdata.get('bench') or None,
+            'squat': data.get('squat') or None,
+            'deadlift': data.get('deadlift') or None
         }
         bmi = utils.calcBmi(weightKg, heightCm)
         bmr = utils.calcBmr(weightKg,heightCm,sex)
         tdee = utils.calcTdee(bmr, utils.lifeStyleFactors[lifeStyle])
-
+        profile = FitnessProfile.objects.create(
+            user=request.user,
+            height=heightCm,
+            weight=weightKg,
+            sex=sex,
+            #age=age, Later
+            lifestyle=lifeStyle,
+            bmi=bmi,
+            bmr=bmr,
+            tdee=tdee,
+            bench=maxes['bench'],
+            squat=maxes['squat'],
+            deadlift=maxes['deadlift']
+        )
         #note to self we need to add age to register or questionnaire, and goals near the end.
-        #dont forget to save to Profile table as well
+        #ALSO NEED TO ADD DIET IN THE QUIZ ALLERGY'S + DIET DON'T FORGET FUTURE ME!!!
+        #remember to save it to the Profile table as well ( i may want to add bmi + tdee to profile)
+        #goals for tmrw:
+        # finish quiz, create home page, barcode beta, begin training ML model to predict potetional future plattueese based off data.
         print(data)
         return JsonResponse({'status': 'success'})
+
+

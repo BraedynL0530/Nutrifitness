@@ -11,5 +11,5 @@ class FitnessProfile(models.Model):
     goal = models.CharField(max_length=20, blank=True)
     lifestyle = models.CharField(max_length=20, blank=True)
     diet = models.CharField(max_length=40, blank=True)
-    allergies = models.TextField(blank=True)
+    allergies = models.JSONField(default=dict, blank=True)
     maxes = models.JSONField(default=dict, blank=True)  # {"bench":80, ...}

@@ -2,7 +2,8 @@ import math
 from datetime import date
 from io import BytesIO
 import cv2
-from pyzbar import pyzbar
+from pyzbar.pyzbar import decode
+import requests
 
 def calcBmi(weightKg, heightCm):
     heightMeter = heightCm / 100.0
@@ -48,7 +49,41 @@ def proteinTarget(weightkg, goal):
     return grams
 
 def barcodeScanner():
-    return
+    cap = cv2.VideoCapture(0)
+    while cap.isOpened():
+        success, frame = cap.read()
+        frame = cv2.flip(frame, 1)
+        cv2.imshow('Barcode Scanner', frame)
+
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            barcode = decode(frame)
+            if barcode:
+                barcode_data = barcode[0].data.decode('utf-8')
+                food_info = readFoodData(barcode_data)
+                print(food_info)
+
+                cap.release()
+                cv2.destroyAllWindows()
+                return food_info
+            else:
+                print("No barcode found")
+
+    cap.release()
+    cv2.destroyAllWindows()
+
+
+def readFoodData(barcode):
+    url = f"https://world.openfoodfacts.org/api/v2/product/{barcode}.json"
+    res = requests.get(url)
+    if res.status_code == 200:
+        print("Food data found")
+        data = res.json()
+        if 'product' in data:
+            return data['product']
+        else:
+            print("No product found.")
+    else:
+        print("Error fetching data.")
 
 def generateFitnessPlan(x,y):
     return
