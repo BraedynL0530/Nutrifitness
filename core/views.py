@@ -62,9 +62,9 @@ def questionnaireData(request):
         )
         #note to self we need to add age to register or questionnaire, and goals near the end.
         #ALSO NEED TO ADD DIET IN THE QUIZ ALLERGY'S + DIET DON'T FORGET FUTURE ME!!!
-        #remember to save it to the Profile table as well ( i may want to add bmi + tdee to profile)
-        #goals for tmrw:
-        # finish quiz, create home page, barcode beta, begin training ML model to predict potetional future plattueese based off data.
+        # need a way to find recipes that fit users diet + allergies, llm>? how large and will it work on deployment
+        # future me research that
+
         print(data)
         return JsonResponse({'status': 'success'})
 
