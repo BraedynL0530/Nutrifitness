@@ -6,7 +6,7 @@ from django.shortcuts import render, redirect
 from django.contrib.auth import login, authenticate
 from django.contrib.auth.forms import UserCreationForm
 from django.views.decorators.csrf import csrf_exempt
-from models import FitnessProfile
+from .models import FitnessProfile
 
 from . import utils
 # Create your views here.
@@ -34,35 +34,35 @@ def questionnaireData(request):
     if request.method == 'POST':
         data = json.loads(request.body)
 
-        heightCm = data.get('height')
-        weightKg = data.get('weight')
-        sex = data.get('sex')
-        lifeStyle = data.get('activity_level')
-        maxes = {
-            'bench': data.getdata.get('bench') or None,
-            'squat': data.get('squat') or None,
-            'deadlift': data.get('deadlift') or None
-        }
-        bmi = utils.calcBmi(weightKg, heightCm)
-        bmr = utils.calcBmr(weightKg,heightCm,sex)
-        tdee = utils.calcTdee(bmr, utils.lifeStyleFactors[lifeStyle])
         profile = FitnessProfile.objects.create(
             user=request.user,
-            height=heightCm,
-            weight=weightKg,
-            sex=sex,
-            #age=age, Later
-            lifestyle=lifeStyle,
-            bmi=bmi,
-            bmr=bmr,
-            tdee=tdee,
-            bench=maxes['bench'],
-            squat=maxes['squat'],
-            deadlift=maxes['deadlift']
+            heightCm=float(data.get('height')),
+            weightKg=float(data.get('weight')),
+            sex=data.get('sex'),
+            lifestyle=data.get('activity_level'),
+            bmi=utils.calcBmi(float(data.get('weight')), float(data.get('height'))),
+            bmr=utils.calcBmr(
+                float(data.get('weight')),
+                float(data.get('height')),
+                data.get('age', 18),  # default untill i add that to login DONT FORGET TO ADD EMAIL AND OAUTH TO LOGIN!
+                data.get('sex')
+            ),
+            tdee=utils.calcTdee(
+                utils.calcBmr(
+                    float(data.get('weight')),
+                    float(data.get('height')),
+                    data.get('age', 18),
+                    data.get('sex')
+                ),
+                utils.lifeStyleFactors[data.get('activity_level')]
+            ),
+            maxes={
+                'bench': data.get('bench') or None,
+                'squat': data.get('squat') or None,
+                'deadlift': data.get('deadlift') or None,
+            }
         )
-        #note to self we need to add age to register or questionnaire, and goals near the end.
-        #ALSO NEED TO ADD DIET IN THE QUIZ ALLERGY'S + DIET DON'T FORGET FUTURE ME!!!
-        # need a way to find recipes that fit users diet + allergies, llm>? how large and will it work on deployment
+        # need a way to find recipes that fit users diet + allergies, llm how large and will it work on deployment
         # future me research that
 
         print(data)

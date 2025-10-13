@@ -74,16 +74,50 @@ def barcodeScanner():
 
 def readFoodData(barcode):
     url = f"https://world.openfoodfacts.org/api/v2/product/{barcode}.json"
-    res = requests.get(url)
-    if res.status_code == 200:
-        print("Food data found")
+    try:
+        res = requests.get(url, timeout=5)  # <- add timeout here
+        res.raise_for_status()
         data = res.json()
         if 'product' in data:
-            return data['product']
+            print("Food data found ✅")
+            product = data['product']
+            simplifyFoodData(product)
+            return product
         else:
             print("No product found.")
-    else:
-        print("Error fetching data.")
+    except requests.Timeout:
+        print("⚠️ Request timed out. Try again later.")
+    except requests.RequestException as e:
+        print(f"⚠️ Error fetching data: {e}")
+    return None
 
+def simplifyFoodData(product):
+    print("SIMPLIFED FOOD DATA:")
+    return {
+        "name": product.get("product_name", "Unknown"),
+        "brand": product.get("brands", "Unknown"),
+        "category": product.get("categories", "Unknown"),
+        "allergens": product.get("allergens_tags", []),
+        "nutrients": {
+            "calories_kcal": product.get("nutriments", {}).get("energy-kcal_100g"),
+            "fat_g": product.get("nutriments", {}).get("fat_100g"),
+            "saturated_fat_g": product.get("nutriments", {}).get("saturated-fat_100g"),
+            "carbohydrates_g": product.get("nutriments", {}).get("carbohydrates_100g"),
+            "sugars_g": product.get("nutriments", {}).get("sugars_100g"),
+            "fiber_g": product.get("nutriments", {}).get("fiber_100g"),
+            "proteins_g": product.get("nutriments", {}).get("proteins_100g"),
+            "salt_g": product.get("nutriments", {}).get("salt_100g"),
+            "sodium_mg": product.get("nutriments", {}).get("sodium_100g"),
+        },
+        "micronutrients": {
+            "calcium_mg": product.get("nutriments", {}).get("calcium_100g"),
+            "iron_mg": product.get("nutriments", {}).get("iron_100g"),
+            "potassium_mg": product.get("nutriments", {}).get("potassium_100g"),
+        },
+        "ecoscore_grade": product.get("ecoscore_grade", "Unknown")
+    }
+#barcode scanner is functional BUT, the simplfiyer isnt working as intended come back to this
 def generateFitnessPlan(x,y):
     return
+
+#barcodeScanner() testing

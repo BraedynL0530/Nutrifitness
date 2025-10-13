@@ -1,136 +1,85 @@
 document.addEventListener("DOMContentLoaded", () => {
     const questions = document.querySelectorAll(".question-card");
     const nextBtn = document.getElementById("next-btn");
-    let current = 0;
+    let currentQuestion = 0;
+    const data = { allergies: [] };
 
-    // Show first question
-    questions[current].classList.add("active");
+    function showQuestion(index) {
+        questions.forEach((q, i) => q.style.display = i === index ? "block" : "none");
+        if (index === questions.length - 1) nextBtn.textContent = "Submit";
+    }
 
-    // Only allow numeric input
-    document.querySelectorAll('input[type="number"]').forEach(input => {
-        input.addEventListener("input", e => {
-            e.target.value = e.target.value.replace(/[^0-9.]/g, "");
+    // Handle button selections
+    document.querySelectorAll(".sex-option, .activity-option, .diet-option").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const type = btn.classList.contains("sex-option") ? "sex"
+                        : btn.classList.contains("activity-option") ? "activity_level"
+                        : "diet";
+
+            document.querySelectorAll(`.${btn.classList[0]}`).forEach(b => b.classList.remove("selected"));
+            btn.classList.add("selected");
+            data[type] = btn.dataset.value;
         });
     });
 
-    // NEXT button click
-    nextBtn.addEventListener("click", () => {
-        const currentQ = questions[current];
-        const required = currentQ.dataset.required === "true";
-        removeWarning(currentQ);
-
-        let answered = false;
-
-        // Numeric inputs
-        if (currentQ.querySelector("input")) {
-            const inputs = currentQ.querySelectorAll("input");
-            answered = [...inputs].some(i => i.value.trim() !== "");
-            const invalid = [...inputs].some(i => isNaN(i.value) || i.value.trim() === "");
-            if (required && invalid) {
-                showWarning(currentQ, "Please enter valid numbers only.");
-                return;
+    // Handle allergy multi-select
+    document.querySelectorAll(".allergy-option").forEach(btn => {
+        btn.addEventListener("click", () => {
+            btn.classList.toggle("selected");
+            const value = btn.dataset.value;
+            if (btn.classList.contains("selected")) {
+                data.allergies.push(value);
+            } else {
+                data.allergies = data.allergies.filter(a => a !== value);
             }
-        }
-        // Sex buttons
-        else if (currentQ.querySelector(".sex-option")) {
-            answered = !!currentQ.dataset.answer;
-        }
-        // Activity buttons
-        else if (currentQ.querySelector(".activity-option")) {
-            answered = !!currentQ.dataset.answer;
-        }
+        });
+    });
 
-        if (required && !answered) {
-            showWarning(currentQ, "Please answer this question before continuing.");
-            return;
-        }
+    nextBtn.addEventListener("click", async () => {
+        // Store text inputs
+        data.height = document.getElementById("height")?.value;
+        data.weight = document.getElementById("weight")?.value;
+        data.bench = document.getElementById("bench")?.value;
+        data.squat = document.getElementById("squat")?.value;
+        data.deadlift = document.getElementById("deadlift")?.value;
 
-        // Move to next question
-        currentQ.classList.remove("active");
-        current++;
-        if (current < questions.length) {
-            questions[current].classList.add("active");
+        if (currentQuestion < questions.length - 1) {
+            currentQuestion++;
+            showQuestion(currentQuestion);
         } else {
-            submitData();
-        }
-    });
-
-    // SEX buttons
-    document.querySelectorAll(".sex-option").forEach(btn => {
-        btn.addEventListener("click", () => {
-            const parent = btn.closest(".question-card");
-            parent.dataset.answer = btn.dataset.value;
-            parent.querySelectorAll(".sex-option").forEach(b => b.classList.remove("selected"));
-            btn.classList.add("selected");
-        });
-    });
-
-    // ACTIVITY buttons
-    document.querySelectorAll(".activity-option").forEach(btn => {
-        btn.addEventListener("click", () => {
-            const parent = btn.closest(".question-card");
-            parent.dataset.answer = btn.dataset.value;
-            parent.querySelectorAll(".activity-option").forEach(b => b.classList.remove("selected"));
-            btn.classList.add("selected");
-        });
-    });
-
-    // Warning helpers
-    function showWarning(card, message) {
-        const warning = document.createElement("div");
-        warning.className = "warning";
-        warning.textContent = message;
-        card.appendChild(warning);
-        setTimeout(() => warning.remove(), 3000);
-    }
-
-    function removeWarning(card) {
-        const warning = card.querySelector(".warning");
-        if (warning) warning.remove();
-    }
-
-    // Submit data
-    function submitData() {
-        const sexCard = document.querySelector(".sex-option.selected")?.closest(".question-card");
-        const activityCard = document.querySelector(".activity-option.selected")?.closest(".question-card");
-
-        const data = {
-            sex: sexCard?.dataset.answer,
-            height: document.getElementById("height").value,
-            weight: document.getElementById("weight").value,
-            bench: document.getElementById("bench").value,
-            squat: document.getElementById("squat").value,
-            deadlift: document.getElementById("deadlift").value,
-            activity_level: activityCard?.dataset.answer
-        };
-
-        // Validate required numeric fields before sending
-        const requiredNums = ['height', 'weight'];
-        for (let field of requiredNums) {
-            if (!data[field] || isNaN(data[field])) {
-                showWarning(document.body, `Invalid value for ${field}`);
-                return;
+            //  submit
+            try {
+                const res = await fetch("/questionnaire-post", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRFToken": getCookie("csrftoken"),
+                    },
+                    body: JSON.stringify(data),
+                });
+                const result = await res.json();
+                console.log("Submitted:", result);
+                //window.location.href = "dashboard"; // Redirect
+            } catch (err) {
+                console.error(err);
             }
         }
+    });
 
-        fetch("/questionnaire-post", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(data),
-        })
-        .then(res => {
-            if (res.ok) showSuccess();
-            else throw new Error("Failed to submit");
-        })
-        .catch(() => showWarning(document.body, "Submission failed. Try again."));
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== "") {
+            const cookies = document.cookie.split(";");
+            for (let cookie of cookies) {
+                cookie = cookie.trim();
+                if (cookie.startsWith(name + "=")) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
     }
 
-    // Success overlay
-    function showSuccess() {
-        const overlay = document.createElement("div");
-        overlay.className = "overlay-success";
-        overlay.innerHTML = "<h2>Submitted successfully!</h2>";
-        document.body.appendChild(overlay);
-        setTimeout(() => overlay.remove(), 2000);
-    }
+    showQuestion(currentQuestion);
 });
