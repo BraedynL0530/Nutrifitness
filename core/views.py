@@ -56,14 +56,15 @@ def questionnaireData(request):
                 ),
                 utils.lifeStyleFactors[data.get('activity_level')]
             ),
+            proteinIntake=utils.proteinTarget(float(data.get('weight')), data.get('goal')),
             maxes={
                 'bench': data.get('bench') or None,
                 'squat': data.get('squat') or None,
                 'deadlift': data.get('deadlift') or None,
             }
         )
-        # need a way to find recipes that fit users diet + allergies, llm how large and will it work on deployment
-        # future me research that
+        #Groq + Llama-3 free API (reasoning, generating recipes, diet filtering, etc.) will be used to generate recipes.
+        #next I need to make a dashboard or workout generatpr
 
         print(data)
         return JsonResponse({'status': 'success'})

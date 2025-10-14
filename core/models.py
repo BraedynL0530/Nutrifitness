@@ -13,6 +13,7 @@ class FitnessProfile(models.Model):
     bmi = models.FloatField(null=True, blank=True)
     bmr = models.FloatField(null=True, blank=True)
     tdee = models.FloatField(null=True, blank=True)
+    proteinIntake = models.FloatField(null=True, blank=True)
     diet = models.CharField(max_length=40, blank=True)
     allergies = models.JSONField(default=dict, blank=True)
     maxes = models.JSONField(default=dict, blank=True)  # {"bench":80, ...}
