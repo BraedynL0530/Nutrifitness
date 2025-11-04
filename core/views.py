@@ -6,7 +6,7 @@ from django.shortcuts import render, redirect
 from django.contrib.auth import login, authenticate
 from django.contrib.auth.forms import UserCreationForm
 from django.views.decorators.csrf import csrf_exempt
-from .models import FitnessProfile
+from .models import FitnessProfile, DailyLog
 
 from . import utils
 # Create your views here.
@@ -66,13 +66,20 @@ def questionnaireData(request):
         #
         #next will be a dashboard, It will contain a semicircle chart to display macro nutrients and a straight bar to display calorie goal
         #if you click on semicircle chart, you can see a better breakdown for micro nutrients
-        #Dashboard will use DailyLog model, also have a + in a circle to use a barcode scanner(pantry and/or daily log) or user custom foods
+        #Dashboard will use DailyLog model, also have a + in a circle to use a barcode scanner (pantry and/or daily log) or user custom foods
 
 
         print(data)
         return JsonResponse({'status': 'success'})
 def dashboard(request):
+    model = DailyLog
+    data = {
+        #"macros": #{"Protein": , "Carbs": 50, "Fat": 20},
+        #"micros": #{"Iron": , "Vitamin C": , "Calcium": 45, "Magnesium": 25},
+        "goal_calories":model.profile.tdee,
+        #"eaten_calories": ,
+    }
 
-    return render(request, 'dashboard.html')
+    return render(request, 'dashboard.html', {"data":data})
 
 

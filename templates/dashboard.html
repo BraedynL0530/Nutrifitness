@@ -1,0 +1,31 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Nutrition Dashboard</title>
+  <link rel="stylesheet" href="{% static 'charts.css' %}">
+</head>
+<body>
+  <div class="dashboard">
+    <!-- Pie chart for macros -->
+    <div class="chart-section">
+      <canvas id="macroChart" width="300" height="300"></canvas>
+      <div id="plusButton">+</div>
+    </div>
+
+    <!-- Bar chart for calories -->
+    <div class="bar-container">
+      <div class="bar-bg">
+        <div id="bar-fill"></div>
+      </div>
+      <p id="calorieText"></p>
+    </div>
+  </div>
+
+  <script>
+    const chartData = JSON.parse('{{ data|safe|escapejs }}');
+  </script>
+  <script src="{% static 'charts.js' %}"></script>
+</body>
+</html>
