@@ -63,13 +63,16 @@ def questionnaireData(request):
                 'deadlift': data.get('deadlift') or None,
             }
         )
-        #Groq + Llama-3 free API (reasoning, generating recipes, diet filtering, etc.) will be used to generate recipes.
-        #next will be a dashboard, It will contain a semicircle chart to display macro nutirents and a straight bar to display calorie goal
-        #if you click on semicircle chart you can see a better breakdown for micro nutrients
+        #
+        #next will be a dashboard, It will contain a semicircle chart to display macro nutrients and a straight bar to display calorie goal
+        #if you click on semicircle chart, you can see a better breakdown for micro nutrients
         #Dashboard will use DailyLog model, also have a + in a circle to use a barcode scanner(pantry and/or daily log) or user custom foods
 
 
         print(data)
         return JsonResponse({'status': 'success'})
+def dashboard(request):
+
+    return render(request, 'dashboard.html')
 
 
