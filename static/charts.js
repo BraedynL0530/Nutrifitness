@@ -2,13 +2,13 @@
 const canvas = document.getElementById("macroChart");
 const ctx = canvas.getContext("2d");
 
-const macros = chartData.macros;
-const micros = chartData.micros;
+const macros = chartData.macros || {};
+const micros = chartData.micros || {};
 let showingMicros = false;
 
 function drawPie(data, colors) {
   const values = Object.values(data);
-  const total = values.reduce((a, b) => a + b, 0);
+  const total = values.reduce((a, b) => a + b, 0) || 1;
   let startAngle = 0;
   const radius = 120;
 
@@ -26,19 +26,17 @@ function drawPie(data, colors) {
   });
 }
 
-// Initial draw (macros)
 const macroColors = ["#a66df5", "#5e3aa8", "#8c70c4"];
 const microColors = ["#b084f7", "#9d6bf2", "#d3a5ff", "#7340b3"];
 drawPie(macros, macroColors);
 
-// Click animation for zoom-in (micros)
+// Zoom toggle on click
 document.getElementById("plusButton").addEventListener("click", () => {
   if (showingMicros) {
     ctx.clearRect(0, 0, 300, 300);
     drawPie(macros, macroColors);
     showingMicros = false;
   } else {
-    // Zoom animation
     let scale = 1;
     const zoom = setInterval(() => {
       ctx.clearRect(0, 0, 300, 300);
@@ -58,9 +56,9 @@ document.getElementById("plusButton").addEventListener("click", () => {
 });
 
 // ---------- BAR CHART (CALORIES) ----------
-const goal = chartData.goal_calories;
-const eaten = chartData.eaten_calories;
-
+const goal = chartData.goal_calories || 1;
+const eaten = chartData.eaten_calories || 0;
 const percent = Math.min((eaten / goal) * 100, 100);
+
 document.getElementById("bar-fill").style.width = percent + "%";
-document.getElementById("calorieText").innerText = `${eaten} / ${goal} kcal`;
+document.getElementById("calorieText").innerText = `${eaten.toFixed(0)} / ${goal.toFixed(0)} kcal`;

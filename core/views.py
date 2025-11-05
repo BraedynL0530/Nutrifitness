@@ -1,5 +1,5 @@
 import json
-
+from datetime import timezone
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.shortcuts import render, redirect
@@ -64,22 +64,29 @@ def questionnaireData(request):
             }
         )
         #
-        #next will be a dashboard, It will contain a semicircle chart to display macro nutrients and a straight bar to display calorie goal
-        #if you click on semicircle chart, you can see a better breakdown for micro nutrients
-        #Dashboard will use DailyLog model, also have a + in a circle to use a barcode scanner (pantry and/or daily log) or user custom foods
+
 
 
         print(data)
         return JsonResponse({'status': 'success'})
 def dashboard(request):
-    model = DailyLog
-    data = {
-        #"macros": #{"Protein": , "Carbs": 50, "Fat": 20},
-        #"micros": #{"Iron": , "Vitamin C": , "Calcium": 45, "Magnesium": 25},
-        "goal_calories":model.profile.tdee,
-        #"eaten_calories": ,
-    }
+    profile = FitnessProfile.objects.get(user=request.user)
+    today = timezone.localdate()
+    totals = DailyLog.get_daily_totals(profile, today)
+    dailyCalories = totals.get("calories")
+    dailyProtien = totals.get("protien")
+    dailyCarbs = totals.get("carbs")
+    dailyFat = totals.get("fat")
 
-    return render(request, 'dashboard.html', {"data":data})
+
+    return render(request, 'dashboard.html', {
+        "totals": totals,
+        "total_calories":dailyCalories,
+        "total_protein":dailyProtien,
+        "total_carbs":dailyCarbs,
+        "total_fat": dailyFat,
+        "goalCalories": profile.tdee,
+        "goalProtein": profile.proteinIntake
+    })
 
 

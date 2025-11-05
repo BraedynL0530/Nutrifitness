@@ -23,6 +23,7 @@
     </div>
   </div>
 
+  <!-- Inject Django data into JS -->
   <script>
     const chartData = JSON.parse('{{ data|safe|escapejs }}');
   </script>
