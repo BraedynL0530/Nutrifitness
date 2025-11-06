@@ -1,5 +1,6 @@
 import json
-from datetime import timezone
+from datetime import date
+
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.shortcuts import render, redirect
@@ -71,7 +72,7 @@ def questionnaireData(request):
         return JsonResponse({'status': 'success'})
 def dashboard(request):
     profile = FitnessProfile.objects.get(user=request.user)
-    today = timezone.localdate()
+    today = date.today()
     totals = DailyLog.get_daily_totals(profile, today)
     dailyCalories = totals.get("calories")
     dailyProtien = totals.get("protien")

@@ -1,9 +1,12 @@
 import math
 from datetime import date
-from io import BytesIO
+from io import BytesIO #may need may not
 import cv2
 from pyzbar.pyzbar import decode
+import os
 import requests
+from cerebras.cloud.sdk import Cerebras
+
 
 def calcBmi(weightKg, heightCm):
     heightMeter = heightCm / 100.0
@@ -116,8 +119,33 @@ def simplifyFoodData(product):
         },
         "ecoscore_grade": product.get("ecoscore_grade", "Unknown")
     }
-#barcode scanner is functional BUT, the simplfiyer isnt working as intended come back to this
+#barcode scanner is functional
 def generateFitnessPlan(x,y):
     return
 
-#barcodeScanner() testing
+client = Cerebras(api_key=os.getenv("CEREBRAS_API_KEY"))
+def generateRecipe(ingredients,allergies):
+    prompt =  prompt = (f"You are a nutrition assistant. Create a healthy recipe using{','.join(ingredients)}, "
+                        f"avoid{','.join(allergies)}. Include calories macro and micronutrients in structured json format.")
+    stream = client.chat.completions.create(
+        model="cerebras-13b-instruct-v1",
+        messages=[
+            {
+                "role": "user",
+                "content": prompt,
+            }
+        ],
+        stream=True,
+        temperature=0.7,
+        max_tokens=1000,
+    )
+
+    result_text = ""
+    for chunk in stream:
+        delta = chunk.choices[0].delta.content
+        if delta:
+            result_text += delta
+
+    return result_text
+
+#barcodeScanner() testing barcode
