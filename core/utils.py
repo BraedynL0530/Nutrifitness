@@ -6,7 +6,7 @@ from pyzbar.pyzbar import decode
 import os
 import requests
 from cerebras.cloud.sdk import Cerebras
-
+from dotenv import load_dotenv
 
 def calcBmi(weightKg, heightCm):
     heightMeter = heightCm / 100.0
@@ -123,6 +123,8 @@ def simplifyFoodData(product):
 def generateFitnessPlan(x,y):
     return
 
+
+load_dotenv()
 client = Cerebras(api_key=os.getenv("CEREBRAS_API_KEY"))
 def generateRecipe(ingredients,allergies):
     prompt =  prompt = (f"You are a nutrition assistant. Create a healthy recipe using{','.join(ingredients)}, "

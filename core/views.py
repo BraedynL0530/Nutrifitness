@@ -78,16 +78,38 @@ def dashboard(request):
     dailyProtien = totals.get("protien")
     dailyCarbs = totals.get("carbs")
     dailyFat = totals.get("fat")
+    # Mock/test data — realistic sample day
+    data = {
+        "macros": {
+            "Protein": 122,  # grams
+            "Carbs": 250,
+            "Fat": 70
+        },
+        "micros": {
+            "Iron": 18,  # mg
+            "Vitamin C": 85,  # mg
+            "Calcium": 900,  # mg
+            "Magnesium": 250,  # mg
+            "Vitamin D": 15,  # µg
+            "Potassium": 2800  # mg
+        },
+        "goal_calories": 2600,
+        "eaten_calories": 1820,
+    }
 
 
     return render(request, 'dashboard.html', {
-        "totals": totals,
-        "total_calories":dailyCalories,
-        "total_protein":dailyProtien,
-        "total_carbs":dailyCarbs,
-        "total_fat": dailyFat,
-        "goalCalories": profile.tdee,
-        "goalProtein": profile.proteinIntake
+        "data": data,
+        "data_json": json.dumps(data)  # Add this
     })
+    # old/real DB data{
+      #  "totals": totals,
+      #  "total_calories":dailyCalories,
+      #  "total_protein":dailyProtien,
+      #  "total_carbs":dailyCarbs,
+      #  "total_fat": dailyFat,
+      #  "goalCalories": profile.tdee,
+      #  "goalProtein": profile.proteinIntake
+    #})
 
 

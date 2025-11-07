@@ -3,19 +3,19 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Nutrition Dashboard</title>
   <link rel="stylesheet" href="{% static 'charts.css' %}">
 </head>
 <body>
   <div class="dashboard">
-    <!-- Pie chart for macros -->
-    <div class="chart-section">
-      <canvas id="macroChart" width="300" height="300"></canvas>
+    <canvas id="macroChart" width="320" height="160" class="clickable"></canvas>
+
+    <div class="middle-area">
       <div id="plusButton">+</div>
     </div>
 
-    <!-- Bar chart for calories -->
-    <div class="bar-container">
+    <div class="bar-container clickable">
       <div class="bar-bg">
         <div id="bar-fill"></div>
       </div>
@@ -23,10 +23,38 @@
     </div>
   </div>
 
-  <!-- Inject Django data into JS -->
-  <script>
-    const chartData = JSON.parse('{{ data|safe|escapejs }}');
-  </script>
+  <!-- Overlay for macros/micros -->
+  <div id="macroOverlay" class="overlay">
+    <div class="overlay-box">
+      <h2>Macronutrients</h2>
+      <div id="macroGrams"></div>
+      <h3>Micronutrients</h3>
+      <ul id="microList"></ul>
+      <p class="close-hint">Tap outside to close</p>
+    </div>
+  </div>
+
+  <!-- Overlay for calories -->
+  <div id="calOverlay" class="overlay">
+    <div class="overlay-box">
+      <h2>Daily Calories</h2>
+      <p id="calDetails"></p>
+      <p class="close-hint">Tap outside to close</p>
+    </div>
+  </div>
+
+  <!-- Overlay for food scan -->
+  <div id="scanOverlay" class="overlay">
+    <div class="overlay-box">
+      <h2>Scan / Log Food</h2>
+      <a href="#" class="placeholder-link">📸 Open Barcode Scanner</a>
+      <p class="close-hint">Tap outside to close</p>
+    </div>
+  </div>
+
+  <!-- Inject Django data into JavaScript - THIS IS THE IMPORTANT PART -->
+  {{ data|json_script:"chart-data" }}
+
   <script src="{% static 'charts.js' %}"></script>
 </body>
 </html>

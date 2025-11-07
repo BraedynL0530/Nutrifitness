@@ -1,64 +1,75 @@
-// ---------- PIE CHART (MACROS) ----------
-const canvas = document.getElementById("macroChart");
-const ctx = canvas.getContext("2d");
+document.addEventListener("DOMContentLoaded", () => {
+  // Load data from Django template
+  const chartData = JSON.parse(document.getElementById("chart-data").textContent);
 
-const macros = chartData.macros || {};
-const micros = chartData.micros || {};
-let showingMicros = false;
+  // ---------- Semicircle (macros) ----------
+  const canvas = document.getElementById("macroChart");
+  const ctx = canvas.getContext("2d");
+  const macros = chartData.macros;
 
-function drawPie(data, colors) {
-  const values = Object.values(data);
-  const total = values.reduce((a, b) => a + b, 0) || 1;
-  let startAngle = 0;
-  const radius = 120;
+  const total = Object.values(macros).reduce((a, b) => a + b, 0);
+  let start = Math.PI;
+  const colors = ["#b084f7", "#8e44ad", "#6c3d99"];
+  const centerX = 160;
+  const centerY = 140;
+  const radius = 90;
 
-  Object.keys(data).forEach((key, i) => {
-    const sliceAngle = (values[i] / total) * 2 * Math.PI;
-
+  Object.entries(macros).forEach(([name, value], i) => {
+    const angle = (value / total) * Math.PI;
     ctx.beginPath();
-    ctx.moveTo(150, 150);
-    ctx.arc(150, 150, radius, startAngle, startAngle + sliceAngle);
-    ctx.closePath();
-    ctx.fillStyle = colors[i % colors.length];
-    ctx.fill();
-
-    startAngle += sliceAngle;
+    ctx.arc(centerX, centerY, radius, start, start + angle);
+    ctx.lineWidth = 30;
+    ctx.strokeStyle = colors[i];
+    ctx.stroke();
+    start += angle;
   });
-}
 
-const macroColors = ["#a66df5", "#5e3aa8", "#8c70c4"];
-const microColors = ["#b084f7", "#9d6bf2", "#d3a5ff", "#7340b3"];
-drawPie(macros, macroColors);
+  // ---------- Bar chart (calories) ----------
+  const goal = chartData.goal_calories;
+  const eaten = chartData.eaten_calories;
+  const percent = Math.min((eaten / goal) * 100, 100);
 
-// Zoom toggle on click
-document.getElementById("plusButton").addEventListener("click", () => {
-  if (showingMicros) {
-    ctx.clearRect(0, 0, 300, 300);
-    drawPie(macros, macroColors);
-    showingMicros = false;
-  } else {
-    let scale = 1;
-    const zoom = setInterval(() => {
-      ctx.clearRect(0, 0, 300, 300);
-      ctx.save();
-      ctx.translate(150, 150);
-      ctx.scale(scale, scale);
-      ctx.translate(-150, -150);
-      drawPie(micros, microColors);
-      ctx.restore();
-      scale += 0.05;
-      if (scale >= 1.3) {
-        clearInterval(zoom);
-        showingMicros = true;
+  // Animate bar fill after page load
+  setTimeout(() => {
+    document.getElementById("bar-fill").style.width = percent + "%";
+  }, 100);
+
+  document.getElementById("calorieText").innerText = `${eaten} / ${goal} kcal`;
+
+  // ---------- Overlay controls ----------
+  const macroOverlay = document.getElementById("macroOverlay");
+  const calOverlay = document.getElementById("calOverlay");
+  const scanOverlay = document.getElementById("scanOverlay");
+
+  // Semicircle click - show macros and micros
+  canvas.addEventListener("click", () => {
+    macroOverlay.classList.add("show");
+    document.getElementById("macroGrams").innerHTML = Object.entries(macros)
+      .map(([k, v]) => `<p><strong>${k}:</strong> ${v}g</p>`)
+      .join("");
+    document.getElementById("microList").innerHTML = Object.entries(chartData.micros)
+      .map(([k, v]) => `<li><strong>${k}:</strong> ${v}mg</li>`)
+      .join("");
+  });
+
+  // Bar click - show calories
+  document.querySelector(".bar-container").addEventListener("click", () => {
+    calOverlay.classList.add("show");
+    document.getElementById("calDetails").innerHTML =
+      `You've consumed <strong>${eaten} calories</strong><br>out of your <strong>${goal} calorie</strong> goal today.`;
+  });
+
+  // Plus button click - show scan overlay with zoom animation
+  document.getElementById("plusButton").addEventListener("click", () => {
+    scanOverlay.classList.add("show");
+  });
+
+  // ---------- Close overlays when clicking outside ----------
+  document.querySelectorAll(".overlay").forEach(overlay => {
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay) {
+        overlay.classList.remove("show");
       }
-    }, 30);
-  }
+    });
+  });
 });
-
-// ---------- BAR CHART (CALORIES) ----------
-const goal = chartData.goal_calories || 1;
-const eaten = chartData.eaten_calories || 0;
-const percent = Math.min((eaten / goal) * 100, 100);
-
-document.getElementById("bar-fill").style.width = percent + "%";
-document.getElementById("calorieText").innerText = `${eaten.toFixed(0)} / ${goal.toFixed(0)} kcal`;
