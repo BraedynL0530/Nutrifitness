@@ -51,28 +51,15 @@ def proteinTarget(weightkg, goal):
     grams = round(weightkg * gPerKg)
     return grams
 
-def barcodeScanner():
-    cap = cv2.VideoCapture(0)
-    while cap.isOpened():
-        success, frame = cap.read()
-        frame = cv2.flip(frame, 1)
-        cv2.imshow('Barcode Scanner', frame)
-
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            barcode = decode(frame)
-            if barcode:
-                barcode_data = barcode[0].data.decode('utf-8')
-                food_info = readFoodData(barcode_data)
-                print(food_info)
-
-                cap.release()
-                cv2.destroyAllWindows()
-                return food_info
-            else:
-                print("No barcode found")
-
-    cap.release()
-    cv2.destroyAllWindows()
+def barcodeScanner(frame):
+    barcode = decode(frame)
+    if not barcode:
+        return{"error":"no barcode found"}
+    else:
+        barcode_data = barcode[0].data.decode('utf-8')
+        food_info = readFoodData(barcode_data)
+        print(food_info)
+        return food_info
 
 
 def readFoodData(barcode):

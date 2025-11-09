@@ -47,7 +47,11 @@
   <div id="scanOverlay" class="overlay">
     <div class="overlay-box">
       <h2>Scan / Log Food</h2>
-      <a href="#" class="placeholder-link">📸 Open Barcode Scanner</a>
+      <div class="scanner-area">
+          <video id="camera" width="300" height="200" autoplay playsinline></video>
+          <button class="placeholder-link" id="captureBtn">📷 Scan Barcode</button>
+          <p id="scanResult">Waiting for scan...</p>
+      </div>
       <p class="close-hint">Tap outside to close</p>
     </div>
   </div>

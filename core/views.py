@@ -1,6 +1,8 @@
 import json
 from datetime import date
 
+import cv2
+import numpy as np
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.shortcuts import render, redirect
@@ -81,17 +83,17 @@ def dashboard(request):
     # Mock/test data — realistic sample day
     data = {
         "macros": {
-            "Protein": 122,  # grams
+            "Protein": 122,
             "Carbs": 250,
             "Fat": 70
         },
         "micros": {
-            "Iron": 18,  # mg
-            "Vitamin C": 85,  # mg
-            "Calcium": 900,  # mg
-            "Magnesium": 250,  # mg
-            "Vitamin D": 15,  # µg
-            "Potassium": 2800  # mg
+            "Iron": 18,
+            "Vitamin C": 85,
+            "Calcium": 900,
+            "Magnesium": 250,
+            "Vitamin D": 15,
+            "Potassium": 2800
         },
         "goal_calories": 2600,
         "eaten_calories": 1820,
@@ -100,7 +102,7 @@ def dashboard(request):
 
     return render(request, 'dashboard.html', {
         "data": data,
-        "data_json": json.dumps(data)  # Add this
+        "data_json": json.dumps(data)
     })
     # old/real DB data{
       #  "totals": totals,
@@ -112,4 +114,15 @@ def dashboard(request):
       #  "goalProtein": profile.proteinIntake
     #})
 
+@csrf_exempt
+def uploadBarcode(request):
+    image = request.FILES.get('image')
+    if not image:
+        return JsonResponse({'error':'No image uploaded!'}, status=400)
+    npImg = np.frombuffer(image.read(), np.uint8)
+    frame = cv2.imdecode(npImg, cv2.IMREAD_COLOR)
+    results = utils.barcodeScanner(frame)
+    if not results:
+        result = {"error": "No barcode found"}
 
+    return JsonResponse(results)
