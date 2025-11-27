@@ -24,6 +24,7 @@ urlpatterns = [
     path('questionnaire-post', views.questionnaireData, name='questionnaire-post'),
     path('More-About-You', views.questionnaire, name='questionnaire'),
     path('dashboard', views.dashboard, name='dashboard'),
+    path('pantry', views.myPantry, name='pantry'),
     path('api/', include('core.urls')),
 
     path('', include('django.contrib.auth.urls')),
