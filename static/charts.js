@@ -99,12 +99,18 @@ document.addEventListener("DOMContentLoaded", () => {
       body: formData,
     });
 
-    const data = await response.json();
-    if (data.barcode) {
-      scanResult.innerHTML = `✅ Barcode: ${data.barcode}<br>Fetching food info...`;
-      const foodRes = await fetch(`/api/barcode-data/${data.barcode}/`);
-      const foodData = await foodRes.json();
 
+  if (!response.ok) {
+      let text = await response.text()
+      console.error("Server error:", text)
+      throw new Error("Server returned non-JSON error")
+  }
+
+  let data = await response.json()
+
+    console.log("RAW DATA:", data);
+    if (data.barcode) {
+      const foodData = data.barcode; // already JSON from backend
       scanResult.innerHTML = `
         <strong>${foodData.name || "Unknown item"}</strong><br>
         Brand: ${foodData.brand || "N/A"}<br>

@@ -71,7 +71,7 @@ def readFoodData(barcode):
         if 'product' in data:
             print("Food data found ✅")
             product = data['product']
-            simplifyFoodData(product)
+            product = simplifyFoodData(product)
             return product
         else:
             print("No product found.")

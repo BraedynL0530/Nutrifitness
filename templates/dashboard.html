@@ -8,18 +8,32 @@
   <link rel="stylesheet" href="{% static 'charts.css' %}">
 </head>
 <body>
-  <div class="dashboard">
-    <canvas id="macroChart" width="320" height="160" class="clickable"></canvas>
 
-    <div class="middle-area">
-      <div id="plusButton">+</div>
-    </div>
+  <a href="/pantry" class="pantry-button">My Pantry</a>
 
-    <div class="bar-container clickable">
-      <div class="bar-bg">
-        <div id="bar-fill"></div>
+  <div class="dashboard-container">
+    <div class="dashboard">
+      <canvas id="macroChart" width="320" height="160" class="clickable"></canvas>
+
+      <div class="food-log-block">
+          <h3>Food Eaten</h3>
+          <ul id="foodLog">
+              <li>no data link later</li>
+              <!-- js will inject the data here. example below! -->
+            <!-- <li>Crackers — 10 kcal</li> -->
+          </ul>
       </div>
-      <p id="calorieText"></p>
+
+      <div class="middle-area">
+        <div id="plusButton">+</div>
+      </div>
+
+      <div class="bar-container clickable">
+        <div class="bar-bg">
+          <div id="bar-fill"></div>
+        </div>
+        <p id="calorieText"></p>
+      </div>
     </div>
   </div>
 

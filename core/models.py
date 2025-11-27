@@ -43,7 +43,7 @@ class FoodItem(models.Model):
 
 
 class PantryItem(models.Model):
-    # linked to FitnessProfile instead of raw User for better data cohesion
+    # linked to FitnessProfile instead of raw User
     profile = models.ForeignKey(FitnessProfile, on_delete=models.CASCADE, related_name="pantry")
     food = models.ForeignKey(FoodItem, on_delete=models.CASCADE)
     quantity = models.FloatField(default=1.0, help_text="In grams or units")

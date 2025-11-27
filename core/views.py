@@ -122,7 +122,13 @@ def uploadBarcode(request):
     npImg = np.frombuffer(image.read(), np.uint8)
     frame = cv2.imdecode(npImg, cv2.IMREAD_COLOR)
     results = utils.barcodeScanner(frame)
-    if not results:
-        result = {"error": "No barcode found"}
 
-    return JsonResponse(results)
+    if not results:
+        return JsonResponse({"error": "No barcode found"}, status=400)
+
+    barcode = results
+
+    return JsonResponse({"barcode": barcode})
+
+def myPantry(request):
+    return render(request,"pantry.html")

@@ -228,6 +228,68 @@ body {
   font-style: italic;
 }
 
+/* Gray container behind dashboard */
+.dashboard-container {
+  background: #494949; /* light gray bg */
+  padding: 20px;
+  border-radius: 20px;
+  position: relative;
+  display: flex;
+  justify-content: center;
+}
+
+/* Pantry button top-right */
+.pantry-button {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: linear-gradient(135deg, #9b59b6, #8e44ad);
+  color: white;
+  font-weight: 500;
+  padding: 12px 18px;
+  border-radius: 50%;
+  text-align: center;
+  text-decoration: none;
+  box-shadow: 0 4px 15px rgba(155, 89, 182, 0.4);
+  transition: all 0.3s ease;
+  z-index: 20; /* above dashboard container */
+}
+
+.pantry-button:hover {
+  transform: scale(1.1);
+  box-shadow: 0 6px 20px rgba(155, 89, 182, 0.6);
+}
+
+.food-log-block {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 12px;
+  margin: 15px 0;
+  max-height: 150px;
+  overflow-y: auto;
+  width: 100%;
+}
+
+.food-log-block h3 {
+  margin: 0 0 8px 0;
+  font-size: 16px;
+  color: #d8b4ff;
+}
+
+#foodLog {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+#foodLog li {
+  margin: 4px 0;
+  padding: 4px 8px;
+  background: rgba(155, 89, 182, 0.15);
+  border-radius: 6px;
+  font-size: 14px;
+}
+
 @keyframes fadeIn {
   from {
     opacity: 0;
