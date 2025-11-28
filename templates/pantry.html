@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Nutrition Dashboard</title>
-  <link rel="stylesheet" href="{% static 'pantry.css' %}">
+  <link rel="stylesheet" href="{% static 'charts.css' %}">
 </head>
 <body>
 
@@ -28,6 +28,7 @@
       </div>
 
 
+
   <!-- Overlay for food scan -->
   <div id="scanOverlay" class="overlay">
     <div class="overlay-box">
@@ -36,11 +37,15 @@
           <video id="camera" width="300" height="200" autoplay playsinline></video>
           <button class="placeholder-link" id="captureBtn">📷 Scan Barcode</button>
           <p id="scanResult">Waiting for scan...</p>
+          <div id="logSection" style="display:none; margin-top:10px;">
+              <button id="logFoodBtn">Log</button>
+            </div>
       </div>
       <p class="close-hint">Tap outside to close</p>
     </div>
   </div>
 
+  <!-- Inject Django data into JavaScript - THIS IS THE IMPORTANT PART -->
   {{ data|json_script:"pantry-data" }}
 
   <script src="{% static 'pantry.js' %}"></script>

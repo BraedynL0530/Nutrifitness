@@ -9,7 +9,7 @@ from django.shortcuts import render, redirect
 from django.contrib.auth import login, authenticate
 from django.contrib.auth.forms import UserCreationForm
 from django.views.decorators.csrf import csrf_exempt
-from .models import FitnessProfile, DailyLog, FoodItem
+from .models import FitnessProfile, DailyLog, FoodItem, PantryItem
 
 from . import utils
 # Create your views here.
@@ -82,30 +82,27 @@ def dashboard(request):
     dailyCarbs = totals.get("carbs", 0)
     dailyFat = totals.get("fat", 0)
 
-    # Micros
-    micros_totals = {
-        "Calcium": totals.get("calcium_mg", 0),
-        "Iron": totals.get("iron_mg", 0),
-        "Potassium": totals.get("potassium_mg", 0),
-        "Magnesium": totals.get("magnesium_mg", 0),
-        "Vitamin C": totals.get("vitamin_c_mg", 0),
-        "Vitamin D": totals.get("vitamin_d_mg", 0),
-        "Vitamin A": totals.get("vitamin_a_mg", 0),
-        "Zinc": totals.get("zinc_mg", 0),
-    }
-    # Real data now that upload is being implemented
     data = {
-        "macros": {
-            "Protein": dailyProtein,
-            "Carbs": dailyCarbs,
-            "Fat": dailyFat
+        "nutrients": {
+            "calories_kcal": dailyCalories,
+            "fat_g": dailyFat,
+            "carbohydrates_g": dailyCarbs,
+            "proteins_g": dailyProtein,
         },
-        "micros": micros_totals,
+        "micronutrients": {
+            "calcium_mg": totals.get("calcium_mg", 0),
+            "iron_mg": totals.get("iron_mg", 0),
+            "potassium_mg": totals.get("potassium_mg", 0),
+            "magnesium_mg": totals.get("magnesium_mg", 0),
+            "vitamin_c_mg": totals.get("vitamin_c_mg", 0),
+            "vitamin_d_mg": totals.get("vitamin_d_mg", 0),
+            "vitamin_a_mg": totals.get("vitamin_a_mg", 0),
+            "zinc_mg": totals.get("zinc_mg", 0),
+        },
         "goal_calories": profile.tdee,
         "eaten_calories": dailyCalories,
     }
-
-
+#i think i fixed the mix match with barcode data? ill test tmrw its late lol
     return render(request, 'dashboard.html', {
         "data": data,
         "data_json": json.dumps(data)
@@ -139,14 +136,20 @@ def saveFood(request):
         grams = data.get("grams")
         qty = float(grams) / 100 if grams else 0
         nutrients = data.get("nutrients_100g") or {}
+        micronutrients = json.loads(request.POST.get('micronutrients', "{}"))
 
-        calories = (nutrients.get('calories_kcal') or 0) * qty
-        protein = (nutrients.get('protein_g') or 0) * qty
-        fat = (nutrients.get('fat_g') or 0) * qty
-        carbs = (nutrients.get('carbs_g') or 0) * qty
+        protein = (nutrients.get("proteins_g") or 0) * qty
+        carbs = (nutrients.get("carbohydrates_g") or 0) * qty
+        fat = (nutrients.get("fat_g") or 0) * qty
+        calories = (nutrients.get("calories_kcal") or 0) * qty
 
-        # micros: multiply each micro by qty
-        micros = {k: v * qty for k, v in (nutrients.get('micros') or {}).items()}
+        # micros:
+        micros = {}
+        for key, value in micronutrients.items():
+            try:
+                micros[key] = float(value) * qty
+            except:
+                micros[key] = 0
 
         food, created = FoodItem.objects.get_or_create(
             barcode=barcode,
@@ -164,6 +167,46 @@ def saveFood(request):
 
         return JsonResponse({"success": True, "food_id": barcode})
 
+@csrf_exempt
+def saveItem(request):
+    if request.method == 'POST':
+        profile = FitnessProfile.objects.get(user=request.user)
+
+        data = json.loads(request.body)
+        barcode = data.get("barcode")
+        name = data.get("name")
+        grams = data.get("grams")
+        qty = float(grams) / 100 if grams else 0
+        nutrients = data.get("nutrients_100g") or {}
+        micronutrients = json.loads(request.POST.get('micronutrients', "{}"))
+
+        protein = (nutrients.get("proteins_g") or 0) * qty
+        carbs = (nutrients.get("carbohydrates_g") or 0) * qty
+        fat = (nutrients.get("fat_g") or 0) * qty
+        calories = (nutrients.get("calories_kcal") or 0) * qty
+
+        # micros:
+        micros = {}
+        for key, value in micronutrients.items():
+            try:
+                micros[key] = float(value) * qty
+            except:
+                micros[key] = 0
+
+        food, created = FoodItem.objects.get_or_create(
+            barcode=barcode,
+            defaults={
+                'name': name,
+                'calories': calories,
+                'protein': protein,
+                'fat': fat,
+                'carbs': carbs,
+                'micros': micros
+            }
+        )
+        PantryItem.objects.create(profile=profile, food=food, quantity=1, unit="gram")
+
+        return JsonResponse({"success": True, "food_id": barcode})
 
 
 

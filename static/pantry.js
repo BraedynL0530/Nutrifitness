@@ -1,6 +1,15 @@
 document.addEventListener("DOMContentLoaded", () => {
   // ---------- Load data from Django template ----------
-  const chartData = JSON.parse(document.getElementById("pantry-data").textContent);
+  const pantryData = JSON.parse(document.getElementById("pantry-data").textContent);
+
+
+
+
+
+
+  // ---------- Overlay controls ----------
+  const scanOverlay = document.getElementById("scanOverlay");
+
 
 
   // ---------- Plus button click - show scan overlay with zoom animation ----------
@@ -53,8 +62,11 @@ document.addEventListener("DOMContentLoaded", () => {
   let data = await response.json()
 
     console.log("RAW DATA:", data);
+    console.log("BARCODE:", data.barcode);
     if (data.barcode) {
       const foodData = data.barcode; // already JSON from backend
+      document.getElementById("logSection").style.display = "block";
+      document.getElementById("logFoodBtn").onclick = () => logFood(foodData);
       scanResult.innerHTML = `
         <strong>${foodData.name || "Unknown item"}</strong><br>
         Brand: ${foodData.brand || "N/A"}<br>
@@ -64,6 +76,54 @@ document.addEventListener("DOMContentLoaded", () => {
       scanResult.textContent = data.error || "No barcode found.";
     }
   });
+
+  async function logFood(food) {
+  if (!grams || grams <= 0) {
+    alert("Enter valid grams.");
+    return;
+  }
+
+
+  const payload = {
+    barcode: food.barcode,
+    name: food.name,
+    brand: food.brand,
+    nutrients_100g: food.nutrients
+  };
+
+  const res = await fetch("/api/pantry-log/", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    console.error(await res.text());
+    alert("Failed to save food.");
+    return;
+  }
+
+  const data = await res.json();
+
+  // update calories UI
+  document.getElementById("calorieText").innerText =
+    `${data.eaten_calories} / ${data.goal_calories} kcal`;
+
+  document.getElementById("bar-fill").style.width =
+    Math.min((data.eaten_calories / data.goal_calories) * 100, 100) + "%";
+
+  // update macros semicircle numbers
+  document.getElementById("macroGrams").innerHTML = `
+    <p><strong>Protein:</strong> ${data.nutrients.protein.toFixed(1)}g</p>
+    <p><strong>Carbs:</strong> ${data.nutrients.carbs.toFixed(1)}g</p>
+    <p><strong>Fat:</strong> ${data.nutrients.fat.toFixed(1)}g</p>
+  `;
+
+  // add the new food to list
+  addFoodToUI(data.food);
+
+  scanOverlay.classList.remove("show");
+  }
 
   // ---------- Close overlays when clicking outside ----------
   document.querySelectorAll(".overlay").forEach(overlay => {

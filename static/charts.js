@@ -150,7 +150,15 @@ document.addEventListener("DOMContentLoaded", () => {
     console.error(await res.text());
     alert("Failed to save food.");
     return;
+
   }
+
+  const ul = document.getElementById("foodLog");
+  const li = document.createElement("li");
+  const qty = grams;
+  const cal = (food.nutrients.calories_kcal || 0) * (qty / 100);
+  li.textContent = `${food.name} — ${cal.toFixed(0)} kcal (${qty}g)`;
+  ul.appendChild(li);
 
   alert("Food logged ✔");
 }
