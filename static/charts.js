@@ -109,8 +109,11 @@ document.addEventListener("DOMContentLoaded", () => {
   let data = await response.json()
 
     console.log("RAW DATA:", data);
+    console.log("BARCODE:", data.barcode);
     if (data.barcode) {
       const foodData = data.barcode; // already JSON from backend
+      document.getElementById("logSection").style.display = "block";
+      document.getElementById("logFoodBtn").onclick = () => logFood(foodData);
       scanResult.innerHTML = `
         <strong>${foodData.name || "Unknown item"}</strong><br>
         Brand: ${foodData.brand || "N/A"}<br>
@@ -120,6 +123,37 @@ document.addEventListener("DOMContentLoaded", () => {
       scanResult.textContent = data.error || "No barcode found.";
     }
   });
+
+  async function logFood(food) {
+  const grams = parseFloat(document.getElementById("gramsInput").value);
+
+  if (!grams || grams <= 0) {
+    alert("Enter valid grams.");
+    return;
+  }
+
+  const payload = {
+    barcode: food.barcode,
+    name: food.name,
+    brand: food.brand,
+    grams: grams,
+    nutrients_100g: food.nutrients
+  };
+
+  const res = await fetch("/api/food-log/", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    console.error(await res.text());
+    alert("Failed to save food.");
+    return;
+  }
+
+  alert("Food logged ✔");
+}
 
   // ---------- Close overlays when clicking outside ----------
   document.querySelectorAll(".overlay").forEach(overlay => {

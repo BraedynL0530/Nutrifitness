@@ -9,12 +9,11 @@ from django.shortcuts import render, redirect
 from django.contrib.auth import login, authenticate
 from django.contrib.auth.forms import UserCreationForm
 from django.views.decorators.csrf import csrf_exempt
-from .models import FitnessProfile, DailyLog
+from .models import FitnessProfile, DailyLog, FoodItem
 
 from . import utils
 # Create your views here.
-def home(request):
-    return render(request, 'home.html')
+
 
 def register(request):
     #planning to add oauth later
@@ -76,27 +75,34 @@ def dashboard(request):
     profile = FitnessProfile.objects.get(user=request.user)
     today = date.today()
     totals = DailyLog.get_daily_totals(profile, today)
-    dailyCalories = totals.get("calories")
-    dailyProtien = totals.get("protien")
-    dailyCarbs = totals.get("carbs")
-    dailyFat = totals.get("fat")
-    # Mock/test data — realistic sample day
+
+    # Big stuff
+    dailyCalories = totals.get("calories", 0)
+    dailyProtein = totals.get("protein", 0)
+    dailyCarbs = totals.get("carbs", 0)
+    dailyFat = totals.get("fat", 0)
+
+    # Micros
+    micros_totals = {
+        "Calcium": totals.get("calcium_mg", 0),
+        "Iron": totals.get("iron_mg", 0),
+        "Potassium": totals.get("potassium_mg", 0),
+        "Magnesium": totals.get("magnesium_mg", 0),
+        "Vitamin C": totals.get("vitamin_c_mg", 0),
+        "Vitamin D": totals.get("vitamin_d_mg", 0),
+        "Vitamin A": totals.get("vitamin_a_mg", 0),
+        "Zinc": totals.get("zinc_mg", 0),
+    }
+    # Real data now that upload is being implemented
     data = {
         "macros": {
-            "Protein": 122,
-            "Carbs": 250,
-            "Fat": 70
+            "Protein": dailyProtein,
+            "Carbs": dailyCarbs,
+            "Fat": dailyFat
         },
-        "micros": {
-            "Iron": 18,
-            "Vitamin C": 85,
-            "Calcium": 900,
-            "Magnesium": 250,
-            "Vitamin D": 15,
-            "Potassium": 2800
-        },
-        "goal_calories": 2600,
-        "eaten_calories": 1820,
+        "micros": micros_totals,
+        "goal_calories": profile.tdee,
+        "eaten_calories": dailyCalories,
     }
 
 
@@ -104,15 +110,7 @@ def dashboard(request):
         "data": data,
         "data_json": json.dumps(data)
     })
-    # old/real DB data{
-      #  "totals": totals,
-      #  "total_calories":dailyCalories,
-      #  "total_protein":dailyProtien,
-      #  "total_carbs":dailyCarbs,
-      #  "total_fat": dailyFat,
-      #  "goalCalories": profile.tdee,
-      #  "goalProtein": profile.proteinIntake
-    #})
+
 
 @csrf_exempt
 def uploadBarcode(request):
@@ -129,6 +127,45 @@ def uploadBarcode(request):
     barcode = results
 
     return JsonResponse({"barcode": barcode})
+
+@csrf_exempt
+def saveFood(request):
+    if request.method == 'POST':
+        profile = FitnessProfile.objects.get(user=request.user)
+
+        data = json.loads(request.body)
+        barcode = data.get("barcode")
+        name = data.get("name")
+        grams = data.get("grams")
+        qty = float(grams) / 100 if grams else 0
+        nutrients = data.get("nutrients_100g") or {}
+
+        calories = (nutrients.get('calories_kcal') or 0) * qty
+        protein = (nutrients.get('protein_g') or 0) * qty
+        fat = (nutrients.get('fat_g') or 0) * qty
+        carbs = (nutrients.get('carbs_g') or 0) * qty
+
+        # micros: multiply each micro by qty
+        micros = {k: v * qty for k, v in (nutrients.get('micros') or {}).items()}
+
+        food, created = FoodItem.objects.get_or_create(
+            barcode=barcode,
+            defaults={
+                'name': name,
+                'calories': calories,
+                'protein': protein,
+                'fat': fat,
+                'carbs': carbs,
+                'micros': micros
+            }
+        )
+        DailyLog.objects.create(profile=profile, food=food, quantity=1)# I need to add meal types in the near future
+        # in js and view
+
+        return JsonResponse({"success": True, "food_id": barcode})
+
+
+
 
 def myPantry(request):
     return render(request,"pantry.html")
