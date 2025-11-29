@@ -1,7 +1,3 @@
-import math
-from datetime import date
-from io import BytesIO #may need may not
-import cv2
 from pyzbar.pyzbar import decode
 import os
 import requests
@@ -71,7 +67,7 @@ def readFoodData(barcode):
         if 'product' in data:
             print("Food data found ✅")
             product = data['product']
-            product = simplifyFoodData(product)
+            product = simplifyFoodData(product, barcode)
             return product
         else:
             print("No product found.")
@@ -81,11 +77,12 @@ def readFoodData(barcode):
         print(f"⚠️ Error fetching data: {e}")
     return None
 
-def simplifyFoodData(product):
+def simplifyFoodData(product,barcode):
     print("SIMPLIFED FOOD DATA:")
     return {
         "name": product.get("product_name", "Unknown"),
         "brand": product.get("brands", "Unknown"),
+        "barcode": barcode,
         "category": product.get("categories", "Unknown"),
         "allergens": product.get("allergens_tags", []),
         "nutrients": {

@@ -13,9 +13,8 @@ from .models import FitnessProfile, DailyLog
 
 from . import utils
 # Create your views here.
-
-#Nucked gpts code and rewriting myself, tried to cut coners having it do the savings logic while do the pantry feature but it backfired
-
+def home(request):
+    return render(request, 'home.html')
 
 def register(request):
     #planning to add oauth later
