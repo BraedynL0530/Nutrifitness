@@ -2,10 +2,52 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Title</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nutrition Dashboard</title>
+  <link rel="stylesheet" href="{% static 'charts.css' %}">
 </head>
 <body>
 
+  <a href="/dashboard" class="pantry-button">Dashboard</a>
+
+  <div class="dashboard-container">
+    <div class="dashboard">
+
+      <div class="food-log-block">
+          <h3>Food Eaten</h3>
+          <ul id="foodLog">
+              <li>no data link later</li>
+              <!-- js will inject the data here. example below! -->
+            <!-- <li>Crackers — 10 kcal</li> -->
+          </ul>
+      </div>
+
+      <div class="middle-area">
+        <div id="plusButton">+</div>
+      </div>
+
+
+
+  <!-- Overlay for food scan -->
+  <div id="scanOverlay" class="overlay">
+    <div class="overlay-box">
+      <h2>Scan / Log Food</h2>
+      <div class="scanner-area">
+          <video id="camera" width="300" height="200" autoplay playsinline></video>
+          <button class="placeholder-link" id="captureBtn">📷 Scan Barcode</button>
+          <p id="scanResult">Waiting for scan...</p>
+          <div id="logSection" style="display:none; margin-top:10px;">
+              <button id="logFoodBtn">Log</button>
+            </div>
+      </div>
+      <p class="close-hint">Tap outside to close</p>
+    </div>
+  </div>
+
+  <!-- Inject Django data into JavaScript - THIS IS THE IMPORTANT PART -->
+  {{ data|json_script:"pantry-data" }}
+
+  <script src="{% static 'pantry.js' %}"></script>
 </body>
 </html>
