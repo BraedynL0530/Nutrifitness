@@ -13,8 +13,7 @@ from .models import FitnessProfile, DailyLog
 
 from . import utils
 # Create your views here.
-def home(request):
-    return render(request, 'home.html')
+#merge didnt work trying again, REMOVED CHATGPTS SAVING LOGIC REWRITING
 
 def register(request):
     #planning to add oauth later
