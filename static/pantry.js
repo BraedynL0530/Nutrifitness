@@ -1,28 +1,27 @@
 document.addEventListener("DOMContentLoaded", () => {
-  // ---------- Load data from Django template ----------
-  const pantryData = JSON.parse(document.getElementById("pantry-data").textContent);
+  // Load pantry items from Django data
+  loadPantryItems();
 
-
-
-
-
-
-  // ---------- Overlay controls ----------
+  // Elements
+  const scanButton = document.getElementById("scanButton");
   const scanOverlay = document.getElementById("scanOverlay");
-
-
-
-  // ---------- Plus button click - show scan overlay with zoom animation ----------
-  document.getElementById("plusButton").addEventListener("click", () => {
-    scanOverlay.classList.add("show");
-  });
-
-  // ---------- Barcode scanner(takes a picture and sends it to backend) ----------
   const video = document.getElementById("camera");
   const captureBtn = document.getElementById("captureBtn");
   const scanResult = document.getElementById("scanResult");
 
-  // ---------- Start webcam feed ----------
+  // Open scanner overlay
+  scanButton.addEventListener("click", () => {
+    scanOverlay.classList.add("show");
+  });
+
+  // Close overlay when clicking outside
+  scanOverlay.addEventListener("click", (e) => {
+    if (e.target === scanOverlay) {
+      scanOverlay.classList.remove("show");
+    }
+  });
+
+  // Start webcam
   if (navigator.mediaDevices.getUserMedia) {
     navigator.mediaDevices.getUserMedia({ video: true })
       .then(stream => {
@@ -34,7 +33,7 @@ document.addEventListener("DOMContentLoaded", () => {
       });
   }
 
-  // ---------- Capture a frame and send to Django backend ----------
+  // Capture and scan barcode
   captureBtn.addEventListener("click", async () => {
     const canvas = document.createElement("canvas");
     canvas.width = video.videoWidth;
@@ -47,90 +46,100 @@ document.addEventListener("DOMContentLoaded", () => {
 
     scanResult.textContent = "Scanning...";
 
-    const response = await fetch("/api/upload-barcode/", {
-      method: "POST",
-      body: formData,
-    });
+    try {
+      const response = await fetch("/api/upload-barcode/", {
+        method: "POST",
+        body: formData,
+      });
 
+      if (!response.ok) {
+        throw new Error("Server returned error");
+      }
 
-  if (!response.ok) {
-      let text = await response.text()
-      console.error("Server error:", text)
-      throw new Error("Server returned non-JSON error")
-  }
+      let data = await response.json();
+      console.log("Scanned data:", data);
 
-  let data = await response.json()
+      if (data.barcode) {
+        const foodData = data.barcode;
 
-    console.log("RAW DATA:", data);
-    console.log("BARCODE:", data.barcode);
-    if (data.barcode) {
-      const foodData = data.barcode; // already JSON from backend
-      document.getElementById("logSection").style.display = "block";
-      document.getElementById("logFoodBtn").onclick = () => logFood(foodData);
-      scanResult.innerHTML = `
-        <strong>${foodData.name || "Unknown item"}</strong><br>
-        Brand: ${foodData.brand || "N/A"}<br>
-        Calories: ${foodData.nutrients?.calories_kcal || "?"} kcal
-      `;
-    } else {
-      scanResult.textContent = data.error || "No barcode found.";
+        scanResult.innerHTML = `
+          <strong style="color: #d8b4ff;">${foodData.name || "Unknown item"}</strong><br>
+          <span style="color: #9b7acf;">Brand: ${foodData.brand || "N/A"}</span><br>
+          <span style="color: #c9b3e8;">Calories: ${foodData.nutrients?.calories_kcal || "?"} kcal per 100g</span><br>
+          <button id="addToPantryBtn" class="add-pantry-btn">Add to Pantry</button>
+        `;
+
+        document.getElementById("addToPantryBtn").onclick = () => addToPantry(foodData);
+
+      } else {
+        scanResult.textContent = data.error || "No barcode found.";
+      }
+    } catch (error) {
+      console.error("Scan error:", error);
+      scanResult.textContent = "Scan failed. Try again.";
     }
   });
 
-  async function logFood(food) {
-  if (!grams || grams <= 0) {
-    alert("Enter valid grams.");
-    return;
-  }
+  // Add item to pantry
+  async function addToPantry(food) {
+    const payload = {
+      barcode: food.barcode || "unknown",
+      name: food.name,
+      category: food.category,
+      allergens: food.allergens,
+      nutrients: food.nutrients,
+      micronutrients: food.micronutrients
+    };
 
+    console.log("Adding to pantry:", payload);
 
-  const payload = {
-    barcode: food.barcode,
-    name: food.name,
-    brand: food.brand,
-    nutrients_100g: food.nutrients
-  };
+    try {
+      const res = await fetch("/api/pantry-log/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
 
-  const res = await fetch("/api/pantry-log/", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-
-  if (!res.ok) {
-    console.error(await res.text());
-    alert("Failed to save food.");
-    return;
-  }
-
-  const data = await res.json();
-
-  // update calories UI
-  document.getElementById("calorieText").innerText =
-    `${data.eaten_calories} / ${data.goal_calories} kcal`;
-
-  document.getElementById("bar-fill").style.width =
-    Math.min((data.eaten_calories / data.goal_calories) * 100, 100) + "%";
-
-  // update macros semicircle numbers
-  document.getElementById("macroGrams").innerHTML = `
-    <p><strong>Protein:</strong> ${data.nutrients.protein.toFixed(1)}g</p>
-    <p><strong>Carbs:</strong> ${data.nutrients.carbs.toFixed(1)}g</p>
-    <p><strong>Fat:</strong> ${data.nutrients.fat.toFixed(1)}g</p>
-  `;
-
-  // add the new food to list
-  addFoodToUI(data.food);
-
-  scanOverlay.classList.remove("show");
-  }
-
-  // ---------- Close overlays when clicking outside ----------
-  document.querySelectorAll(".overlay").forEach(overlay => {
-    overlay.addEventListener("click", (e) => {
-      if (e.target === overlay) {
-        overlay.classList.remove("show");
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error("Server error:", errorText);
+        alert("Failed to add to pantry.");
+        return;
       }
+
+      alert(`${food.name} added to pantry!`);
+      location.reload();
+
+    } catch (error) {
+      console.error("Error adding to pantry:", error);
+      alert("Error adding to pantry.");
+    }
+  }
+
+  // Load and display pantry items
+  function loadPantryItems() {
+    const container = document.getElementById("pantryItems");
+
+    if (!pantryData || pantryData.length === 0) {
+      container.innerHTML = '<p class="empty-message">Your pantry is empty. Scan items to add them!</p>';
+      return;
+    }
+
+    container.innerHTML = "";
+
+    pantryData.forEach(item => {
+      const card = document.createElement("div");
+      card.className = "pantry-item";
+
+      card.innerHTML = `
+        <h3 class="pantry-item-name">${item.name}</h3>
+        <p class="pantry-item-brand">${item.brand || "Unknown Brand"}</p>
+        <p class="pantry-item-info">Category: ${item.category || "N/A"}</p>
+        <p class="pantry-item-info">Calories: ${item.calories || 0} kcal per 100g</p>
+        <p class="pantry-item-quantity">Quantity: ${item.quantity} ${item.unit || "item"}${item.quantity > 1 ? "s" : ""}</p>
+      `;
+
+      container.appendChild(card);
     });
-  });
+  }
 });

@@ -112,6 +112,10 @@ def dashboard(request):
       #  "goalCalories": profile.tdee,
       #  "goalProtein": profile.proteinIntake
     #})
+def myPantry(request):
+    profile = FitnessProfile.objects.get(user=request.user)
+    pantryItems = profile.pantry.all()
+    return render(request, 'pantry.html', {"pantry_data":json.dumps(pantryItems)})
 
 @csrf_exempt
 def uploadBarcode(request):
@@ -129,8 +133,7 @@ def uploadBarcode(request):
 
     return JsonResponse({"barcode": barcode})
 
-def myPantry(request):
-    return render(request,"pantry.html")
+
 
 @csrf_exempt
 def saveFood(request):
@@ -151,7 +154,7 @@ def saveFood(request):
                 "category": category,
                 "allergens": allergens,
                 "calories": nutrients.get("calories_kcal", 0.0),
-                "protein": nutrients.get("protein_g", 0.0),
+                "protein": nutrients.get("proteins_g", 0.0),
                 "fat": nutrients.get("fat_g", 0.0),
                 "carbs": nutrients.get("carbohydrates_g", 0.0),
                 "micros":micronutrients
@@ -165,4 +168,11 @@ def saveFood(request):
             "food_name": name,
             "grams": grams
         })
+
+@csrf_exempt
+def saveItem(request):
+    if request.method == "POST":
+        data = json.loads(request.body)
+# finish later lazy bum needs to make a food similarly to save food and this time create a pantyItem not dailylog simple
+
 

@@ -4,6 +4,7 @@ import requests
 from cerebras.cloud.sdk import Cerebras
 from dotenv import load_dotenv
 
+
 def calcBmi(weightKg, heightCm):
     heightMeter = heightCm / 100.0
     bmi = weightKg / (heightMeter * heightMeter)
@@ -111,8 +112,10 @@ def generateFitnessPlan(x,y):
 
 load_dotenv()
 client = Cerebras(api_key=os.getenv("CEREBRAS_API_KEY"))
-def generateRecipe(ingredients,allergies):
-    prompt =  prompt = (f"You are a nutrition assistant. Create a healthy recipe using{','.join(ingredients)}, "
+
+
+def generateRecipe(ingredients,allergies,diet):
+    prompt =  prompt = (f"You are a nutrition assistant. Create a healthy recipe with detailed instructions using{','.join(ingredients)},{','.join(diet)}, "
                         f"avoid{','.join(allergies)}. Include calories macro and micronutrients in structured json format.")
     stream = client.chat.completions.create(
         model="cerebras-13b-instruct-v1",

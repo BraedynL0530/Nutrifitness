@@ -4,49 +4,42 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Nutrition Dashboard</title>
-  <link rel="stylesheet" href="{% static 'charts.css' %}">
+  <title>My Pantry</title>
+  <link rel="stylesheet" href="{% static 'pantry.css' %}">
 </head>
 <body>
 
-  <a href="/dashboard" class="pantry-button">Dashboard</a>
+  <a href="/dashboard" class="back-button">← Dashboard</a>
 
-  <div class="dashboard-container">
-    <div class="dashboard">
+  <div class="pantry-container">
+    <h1>My Pantry</h1>
 
-      <div class="food-log-block">
-          <h3>Food Eaten</h3>
-          <ul id="foodLog">
-              <li>no data link later</li>
-              <!-- js will inject the data here. example below! -->
-            <!-- <li>Crackers — 10 kcal</li> -->
-          </ul>
-      </div>
+    <div class="pantry-items" id="pantryItems">
+      <!-- Pantry items will be injected here by JS -->
+      <p class="empty-message">Your pantry is empty. Scan items to add them!</p>
+    </div>
+  </div>
 
-      <div class="middle-area">
-        <div id="plusButton">+</div>
-      </div>
+  <!-- Floating scan button -->
+  <div id="scanButton" class="scan-button">+</div>
 
-
-
-  <!-- Overlay for food scan -->
+  <!-- Scan Overlay -->
   <div id="scanOverlay" class="overlay">
     <div class="overlay-box">
-      <h2>Scan / Log Food</h2>
+      <h2>Add to Pantry</h2>
       <div class="scanner-area">
-          <video id="camera" width="300" height="200" autoplay playsinline></video>
-          <button class="placeholder-link" id="captureBtn">📷 Scan Barcode</button>
-          <p id="scanResult">Waiting for scan...</p>
-          <div id="logSection" style="display:none; margin-top:10px;">
-              <button id="logFoodBtn">Log</button>
-            </div>
+        <video id="camera" width="300" height="200" autoplay playsinline></video>
+        <button class="capture-btn" id="captureBtn">📷 Scan Barcode</button>
+        <p id="scanResult">Point camera at barcode</p>
       </div>
       <p class="close-hint">Tap outside to close</p>
     </div>
   </div>
 
-  <!-- Inject Django data into JavaScript - THIS IS THE IMPORTANT PART -->
-  {{ data|json_script:"pantry-data" }}
+  <!-- Inject pantry data from Django -->
+  <script>
+    const pantryData = {{ pantry_data|safe }};
+  </script>
 
   <script src="{% static 'pantry.js' %}"></script>
 </body>
