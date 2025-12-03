@@ -9,7 +9,7 @@ from django.shortcuts import render, redirect
 from django.contrib.auth import login, authenticate
 from django.contrib.auth.forms import UserCreationForm
 from django.views.decorators.csrf import csrf_exempt
-from .models import FitnessProfile, DailyLog
+from .models import FitnessProfile, DailyLog, PantryItem,FoodItem
 
 from . import utils
 # Create your views here.
@@ -131,3 +131,38 @@ def uploadBarcode(request):
 
 def myPantry(request):
     return render(request,"pantry.html")
+
+@csrf_exempt
+def saveFood(request):
+    if request.method == "POST":
+        data = json.loads(request.body)
+        barcode = data.get("barcode", "")
+        name = data.get("name", "")
+        grams = data.get("grams", 0)
+        nutrients = data.get("nutrients", {})
+        micronutrients = data.get("micronutrients", {})
+        category = data.get("category", "")
+        allergens = data.get("allergens", [])
+
+        food, created = FoodItem.objects.get_or_create(
+            barcode=barcode,
+            defaults={
+                "name": name,
+                "category": category,
+                "allergens": allergens,
+                "calories": nutrients.get("calories_kcal", 0.0),
+                "protein": nutrients.get("protein_g", 0.0),
+                "fat": nutrients.get("fat_g", 0.0),
+                "carbs": nutrients.get("carbohydrates_g", 0.0),
+                "micros":micronutrients
+            })
+
+        DailyLog.objects.create(food=food, quantity=float(grams/100), profile=request.user.fitnessprofile)
+
+        print(f"✅ Saved: {name} - {grams}g (quantity={grams / 100})")
+        return JsonResponse({
+            "success": True,
+            "food_name": name,
+            "grams": grams
+        })
+

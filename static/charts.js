@@ -29,7 +29,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const eaten = chartData.eaten_calories;
   const percent = Math.min((eaten / goal) * 100, 100);
 
-  // ---------- Animate bar fill after page load ----------
   setTimeout(() => {
     document.getElementById("bar-fill").style.width = percent + "%";
   }, 100);
@@ -59,12 +58,12 @@ document.addEventListener("DOMContentLoaded", () => {
       `You've consumed <strong>${eaten} calories</strong><br>out of your <strong>${goal} calorie</strong> goal today.`;
   });
 
-  // ---------- Plus button click - show scan overlay with zoom animation ----------
+  // ---------- Plus button click - show scan overlay ----------
   document.getElementById("plusButton").addEventListener("click", () => {
     scanOverlay.classList.add("show");
   });
 
-  // ---------- Barcode scanner(takes a picture and sends it to backend) ----------
+  // ---------- Barcode scanner ----------
   const video = document.getElementById("camera");
   const captureBtn = document.getElementById("captureBtn");
   const scanResult = document.getElementById("scanResult");
@@ -81,7 +80,7 @@ document.addEventListener("DOMContentLoaded", () => {
       });
   }
 
-  // ---------- Capture a frame and send to Django backend ----------
+  // ---------- Capture and send to backend ----------
   captureBtn.addEventListener("click", async () => {
     const canvas = document.createElement("canvas");
     canvas.width = video.videoWidth;
@@ -94,34 +93,92 @@ document.addEventListener("DOMContentLoaded", () => {
 
     scanResult.textContent = "Scanning...";
 
-    const response = await fetch("/api/upload-barcode/", {
-      method: "POST",
-      body: formData,
-    });
+    try {
+      const response = await fetch("/api/upload-barcode/", {
+        method: "POST",
+        body: formData,
+      });
 
+      if (!response.ok) {
+        let text = await response.text();
+        console.error("Server error:", text);
+        throw new Error("Server returned error");
+      }
 
-  if (!response.ok) {
-      let text = await response.text()
-      console.error("Server error:", text)
-      throw new Error("Server returned non-JSON error")
-  }
+      let data = await response.json();
+      console.log("RAW DATA:", data);
 
-  let data = await response.json()
+      if (data.barcode) {
+        const foodData = data.barcode;
 
-    console.log("RAW DATA:", data);
-    if (data.barcode) {
-      const foodData = data.barcode; // already JSON from backend
-      scanResult.innerHTML = `
-        <strong>${foodData.name || "Unknown item"}</strong><br>
-        Brand: ${foodData.brand || "N/A"}<br>
-        Calories: ${foodData.nutrients?.calories_kcal || "?"} kcal
-      `;
-    } else {
-      scanResult.textContent = data.error || "No barcode found.";
+        // Show the log section
+        document.getElementById("logSection").style.display = "block";
+
+        // Attach click handler to log button
+        document.getElementById("logFoodBtn").onclick = () => logFood(foodData);
+
+        scanResult.innerHTML = `
+          <strong>${foodData.name || "Unknown item"}</strong><br>
+          Brand: ${foodData.brand || "N/A"}<br>
+          Calories: ${foodData.nutrients?.calories_kcal || "?"} kcal per 100g
+        `;
+      } else {
+        scanResult.textContent = data.error || "No barcode found.";
+        document.getElementById("logSection").style.display = "none";
+      }
+    } catch (error) {
+      console.error("Scan error:", error);
+      scanResult.textContent = "Scan failed. Try again.";
+      document.getElementById("logSection").style.display = "none";
     }
   });
 
-  // ---------- Close overlays when clicking outside ----------
+  // ---------- Log food function ----------
+  async function logFood(food) {
+    const grams = parseFloat(document.getElementById("gramsInput").value);
+
+    if (!grams || grams <= 0) {
+      alert("Enter valid grams.");
+      return;
+    }
+
+    // Simple payload - matches what utils.py returns
+    const payload = {
+      barcode: food.barcode || "unknown",
+      name: food.name,
+      grams: grams,
+      nutrients: food.nutrients,
+      micronutrients: food.micronutrients
+    };
+
+    console.log("Sending payload:", payload);
+
+    try {
+      const res = await fetch("/api/food-log/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error("Server error:", errorText);
+        alert("Failed to save food.");
+        return;
+      }
+
+      alert("Food logged! Refresh to see updated totals.");
+
+      //reload to update charts
+      location.reload();
+
+    } catch (error) {
+      console.error("Error logging food:", error);
+      alert("Error logging food.");
+    }
+  }
+
+  // ---------- Close overlays ----------
   document.querySelectorAll(".overlay").forEach(overlay => {
     overlay.addEventListener("click", (e) => {
       if (e.target === overlay) {

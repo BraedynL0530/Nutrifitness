@@ -88,18 +88,19 @@ def simplifyFoodData(product,barcode):
         "nutrients": {
             "calories_kcal": product.get("nutriments", {}).get("energy-kcal_100g"),
             "fat_g": product.get("nutriments", {}).get("fat_100g"),
-            "saturated_fat_g": product.get("nutriments", {}).get("saturated-fat_100g"),
             "carbohydrates_g": product.get("nutriments", {}).get("carbohydrates_100g"),
-            "sugars_g": product.get("nutriments", {}).get("sugars_100g"),
-            "fiber_g": product.get("nutriments", {}).get("fiber_100g"),
             "proteins_g": product.get("nutriments", {}).get("proteins_100g"),
-            "salt_g": product.get("nutriments", {}).get("salt_100g"),
-            "sodium_mg": product.get("nutriments", {}).get("sodium_100g"),
+
+
         },
         "micronutrients": {
             "calcium_mg": product.get("nutriments", {}).get("calcium_100g"),
             "iron_mg": product.get("nutriments", {}).get("iron_100g"),
             "potassium_mg": product.get("nutriments", {}).get("potassium_100g"),
+            "magnesium_mg": product.get("nutriments", {}).get("magnesium_100g"),
+            "vitamin-C_mg": product.get("nutriments", {}).get("vitamin-C_100g"),
+            "vitamin-D_mg": product.get("nutriments", {}).get("vitamin-D_100g"),
+
         },
         "ecoscore_grade": product.get("ecoscore_grade", "Unknown")
     }
