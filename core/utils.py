@@ -114,9 +114,15 @@ load_dotenv()
 client = Cerebras(api_key=os.getenv("CEREBRAS_API_KEY"))
 
 
-def generateRecipe(ingredients,allergies,diet):
-    prompt =  prompt = (f"You are a nutrition assistant. Create a healthy recipe with detailed instructions using{','.join(ingredients)},{','.join(diet)}, "
-                        f"avoid{','.join(allergies)}. Include calories macro and micronutrients in structured json format.")
+def generateRecipe(ingredients, allergies, diet):
+    if not ingredients:
+        return None
+
+    prompt = (
+        f"You are a nutrition assistant. Create a healthy recipe with detailed instructions using {', '.join(ingredients)}, "
+        f"dietary preferences: {', '.join(diet) if diet else 'none'}, "
+        f"avoid allergens: {', '.join(allergies) if allergies else 'none'}. "
+        f"Include calories, macros, and micronutrients in structured JSON format.")
     stream = client.chat.completions.create(
         model="cerebras-13b-instruct-v1",
         messages=[

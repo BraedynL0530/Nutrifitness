@@ -90,6 +90,7 @@ class DailyLog(models.Model):
 
             if log.food.micros:
                 for key, value in log.food.micros.items():
-                    totals[key] += value * log.quantity
+                    if value is not None:
+                        totals[key] += value * log.quantity
 
         return dict(totals)

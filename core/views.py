@@ -76,26 +76,26 @@ def dashboard(request):
     today = date.today()
     totals = DailyLog.get_daily_totals(profile, today)
     dailyCalories = totals.get("calories")
-    dailyProtien = totals.get("protien")
+    dailyProtien = totals.get("proteins") #miss spelled protien found the issue
     dailyCarbs = totals.get("carbs")
     dailyFat = totals.get("fat")
-    # Mock/test data — realistic sample day
+    # Now real DB data,
     data = {
         "macros": {
-            "Protein": 122,
-            "Carbs": 250,
-            "Fat": 70
+            "Protein": dailyProtien,
+            "Carbs": dailyCarbs,
+            "Fat": dailyFat
         },
         "micros": {
-            "Iron": 18,
-            "Vitamin C": 85,
-            "Calcium": 900,
-            "Magnesium": 250,
-            "Vitamin D": 15,
-            "Potassium": 2800
+            "calcium_mg": totals.get("calcium_mg", 0),
+            "iron_mg": totals.get("iron_mg", 0),
+            "potassium_mg": totals.get("potassium_mg", 0),
+            "magnesium_mg": totals.get("magnesium_mg", 0),
+            "vitamin-C_mg": totals.get("vitamin-C_mg", 0),
+            "vitamin-D_mg": totals.get("vitamin-D_mg", 0),
         },
-        "goal_calories": 2600,
-        "eaten_calories": 1820,
+        "goal_calories": profile.tdee,
+        "eaten_calories": dailyCalories,
     }
 
 
@@ -103,19 +103,27 @@ def dashboard(request):
         "data": data,
         "data_json": json.dumps(data)
     })
-    # old/real DB data{
-      #  "totals": totals,
-      #  "total_calories":dailyCalories,
-      #  "total_protein":dailyProtien,
-      #  "total_carbs":dailyCarbs,
-      #  "total_fat": dailyFat,
-      #  "goalCalories": profile.tdee,
-      #  "goalProtein": profile.proteinIntake
-    #})
+
+
 def myPantry(request):
     profile = FitnessProfile.objects.get(user=request.user)
-    pantryItems = profile.pantry.all()
-    return render(request, 'pantry.html', {"pantry_data":json.dumps(pantryItems)})
+    pantry_items = profile.pantry.select_related('food').all()
+
+    # Convert QuerySet to list of dicts
+    pantry_data = []
+    for item in pantry_items:
+        pantry_data.append({
+            'name': item.food.name,
+            'brand': item.food.category,  # Or add a brand field if you have one
+            'category': item.food.category,
+            'calories': item.food.calories,
+            'quantity': item.quantity,
+            'unit': item.unit
+        })
+
+    return render(request, 'pantry.html', {
+        'pantry_data': json.dumps(pantry_data)
+    })
 
 @csrf_exempt
 def uploadBarcode(request):
@@ -173,6 +181,72 @@ def saveFood(request):
 def saveItem(request):
     if request.method == "POST":
         data = json.loads(request.body)
-# finish later lazy bum needs to make a food similarly to save food and this time create a pantyItem not dailylog simple
+        barcode = data.get("barcode", "")
+        name = data.get("name", "")
+        nutrients = data.get("nutrients", {})
+        micronutrients = data.get("micronutrients", {})
+        category = data.get("category", "")
+        allergens = data.get("allergens", [])
+
+        food, created = FoodItem.objects.get_or_create(
+            barcode=barcode,
+            defaults={
+                "name": name,
+                "category": category,
+                "allergens": allergens,
+                "calories": nutrients.get("calories_kcal", 0.0),
+                "protein": nutrients.get("proteins_g", 0.0),
+                "fat": nutrients.get("fat_g", 0.0),
+                "carbs": nutrients.get("carbohydrates_g", 0.0),
+                "micros": micronutrients
+            })
+
+        PantryItem.objects.create(food=food, profile=request.user.fitnessprofile)
+        print(f"✅ Saved: {name}")
+        return JsonResponse({
+            "success": True,
+            "food_name": name,
+        })
 
 
+def aiRecipe(request):
+    try:
+        profile = FitnessProfile.objects.get(user=request.user)
+
+        # Get ingredients from pantry
+        ingredients = list(profile.pantry.all().values_list('food__name', flat=True))
+
+        # Check if pantry is empty
+        if not ingredients:
+            return JsonResponse({
+                "error": "Your pantry is empty! Add some items first."
+            }, status=400)
+
+        # Get allergies
+        allergies = profile.allergies if profile.allergies else {}
+        allergy_list = list(allergies.keys()) if isinstance(allergies, dict) else []
+
+        # Get diet
+        diet_list = [profile.diet] if profile.diet else []
+
+        print(f"Generating recipe with:")
+        print(f"  Ingredients: {ingredients}")
+        print(f"  Allergies: {allergy_list}")
+        print(f"  Diet: {diet_list}")
+
+        recipe = utils.generateRecipe(ingredients, allergy_list, diet_list)
+
+        if not recipe:
+            return JsonResponse({
+                "error": "Failed to generate recipe. Try again."
+            }, status=500)
+
+        return JsonResponse({"recipe": recipe})
+
+    except FitnessProfile.DoesNotExist:
+        return JsonResponse({"error": "Profile not found"}, status=404)
+    except Exception as e:
+        print(f"❌ Recipe generation error: {e}")
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({"error": str(e)}, status=500)

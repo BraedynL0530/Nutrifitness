@@ -142,4 +142,61 @@ document.addEventListener("DOMContentLoaded", () => {
       container.appendChild(card);
     });
   }
+
+  // Generate recipe button
+  const generateBtn = document.getElementById("generateRecipeBtn");
+  if (generateBtn) {
+    generateBtn.addEventListener("click", generateRecipe);
+  }
+
+  // Generate recipe from pantry items
+  async function generateRecipe() {
+    const resultDiv = document.getElementById("recipeResult");
+    const generateBtn = document.getElementById("generateRecipeBtn");
+    const retryBtn = document.getElementById("retryRecipeBtn");
+
+    // Hide retry button, show loading
+    if (retryBtn) retryBtn.style.display = "none";
+    generateBtn.disabled = true;
+    generateBtn.textContent = "Generating...";
+    resultDiv.innerHTML = '<p style="color: #9b7acf;">🔄 Creating your recipe...</p>';
+
+    try {
+      const response = await fetch("/api/pantry-ai/", {
+        method: "GET",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to generate recipe");
+      }
+
+      const data = await response.json();
+      console.log("Recipe data:", data);
+
+      // Display recipe
+      resultDiv.innerHTML = `
+        <div style="text-align: left; color: #d8b4ff; line-height: 1.6;">
+          <pre style="white-space: pre-wrap; font-family: inherit;">${data.recipe}</pre>
+        </div>
+      `;
+
+      generateBtn.textContent = "Generate Another Recipe";
+      generateBtn.disabled = false;
+
+    } catch (error) {
+      console.error("Recipe generation error:", error);
+      resultDiv.innerHTML = '<p style="color: #ff6b6b;">Failed to generate recipe. Try again.</p>';
+      generateBtn.textContent = "Generate Recipe";
+      generateBtn.disabled = false;
+
+      // Show retry button
+      if (retryBtn) retryBtn.style.display = "inline-block";
+    }
+  }
+
+  // Retry button handler
+  const retryBtn = document.getElementById("retryRecipeBtn");
+  if (retryBtn) {
+    retryBtn.addEventListener("click", generateRecipe);
+  }
 });
