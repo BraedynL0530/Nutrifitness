@@ -3,6 +3,7 @@ import os
 import requests
 from cerebras.cloud.sdk import Cerebras
 from dotenv import load_dotenv
+import joblib
 
 
 def calcBmi(weightKg, heightCm):
@@ -124,7 +125,7 @@ def generateRecipe(ingredients, allergies, diet):
         f"avoid allergens: {', '.join(allergies) if allergies else 'none'}. "
         f"Include calories, macros, and micronutrients in structured JSON format.")
     stream = client.chat.completions.create(
-        model="cerebras-13b-instruct-v1",
+        model="llama3.1-8b", # Dudes changed the model since i last added this i was wondering the issue!
         messages=[
             {
                 "role": "user",
@@ -144,4 +145,34 @@ def generateRecipe(ingredients, allergies, diet):
 
     return result_text
 
-#barcodeScanner() testing barcode
+
+def getWeightPrediction(profile):
+
+    try:
+        model = joblib.load('weight_prediction_model.joblib')
+    except:
+        return None
+
+    # Get most recent week's data
+    latest_summary = profile.weekly_summaries.first()
+
+    if not latest_summary:
+        # No data yet - need to create summaries first
+        return None
+
+    sex_encoded = 1 if profile.sex == 'male' else 0
+
+    features = [
+        latest_summary.avg_daily_calories,
+        latest_summary.avg_daily_protein,
+        sex_encoded,
+        profile.tdee,
+    ]
+
+    # Predict
+    try:
+        prediction = model.predict([features])[0]
+        return round(prediction, 2)
+    except Exception as e:
+        print(f"Prediction error: {e}")
+        return None

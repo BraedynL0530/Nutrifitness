@@ -9,14 +9,10 @@ from django.shortcuts import render, redirect
 from django.contrib.auth import login, authenticate
 from django.contrib.auth.forms import UserCreationForm
 from django.views.decorators.csrf import csrf_exempt
-from pyexpat import features
-
-from .models import FitnessProfile, DailyLog, PantryItem,FoodItem,WeightLog
-import joblib
-
+from datetime import timedelta
+from django.utils import timezone
+from .models import FitnessProfile, DailyLog, PantryItem,FoodItem,WeeklySummary
 from . import utils
-# Create your views here.
-#merge didnt work trying again, REMOVED CHATGPTS SAVING LOGIC REWRITING
 
 def register(request):
     #planning to add oauth later
@@ -78,11 +74,19 @@ def questionnaireData(request):
 @login_required(login_url='/login/')
 def dashboard(request):
     profile = FitnessProfile.objects.get(user=request.user)
+
+    today = timezone.localdate()
+    last_week_start = today - timedelta(days=today.weekday() + 7)  # Last Monday
+    WeeklySummary.create_from_daily_logs(profile, last_week_start)
+
     weight_logs = profile.weight_logs.all()[:30]
-    today = date.today()
+
+    # Get ML prediction
+    predicted_change = utils.getWeightPrediction(profile)
+
     totals = DailyLog.get_daily_totals(profile, today)
     dailyCalories = totals.get("calories")
-    dailyProtien = totals.get("proteins") #miss spelled protien found the issue
+    dailyProtien = totals.get("protein") # Misspelled protein found the issue
     dailyCarbs = totals.get("carbs")
     dailyFat = totals.get("fat")
     # Now real DB data,
@@ -105,20 +109,21 @@ def dashboard(request):
     }
 
     weightData = {
-        'current_weight': profile.get_latest_weight(),
-        #'prediction': calculate_prediction(profile),
+        'current_weight': profile.get_latest_weight(), #not displaying check later
+        'prediction': predicted_change,
         'history': [
             {'date': log.date.strftime('%Y-%m-%d'), 'weight': log.weight}
             for log in weight_logs
         ]
     }
 
-
+    print(weightData)
     return render(request, 'dashboard.html', {
         "data": data,
         "data_json": json.dumps(data),
         "weightData": weightData,
         "weightData_json": json.dumps(weightData),
+        "user":request.user,
     })
 
 
@@ -132,11 +137,9 @@ def myPantry(request):
     for item in pantry_items:
         pantry_data.append({
             'name': item.food.name,
-            'brand': item.food.category,  # Or add a brand field if you have one
+            'brand': item.food.category,
             'category': item.food.category,
-            'calories': item.food.calories,
-            'quantity': item.quantity,
-            'unit': item.unit
+            'calories': item.food.calories, # Fixxed had quantity n stuff bc i reused the dashboard/daily item
         })
 
     return render(request, 'pantry.html', {
@@ -280,12 +283,3 @@ def aiRecipe(request):
         traceback.print_exc()
         return JsonResponse({"error": str(e)}, status=500)
 
-@csrf_exempt
-def habitToWeight(request):     # Need to create a weekly ORM model. Calculate average values for each week, assign weights to each week, and store feed here for features here.
-    weightLog = WeightLog
-    profile = FitnessProfile.objects.get(user=request.user)
-    model = joblib.load("weight_prediction_model.joblib") # Needs update look at repo issues for more info about this
-    weight = weightLog.objects.filter(profile=profile).last().weight
-    features= []
-    predicted_weight_change = model.predict(features)
-    pass
