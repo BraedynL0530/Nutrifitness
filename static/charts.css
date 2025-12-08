@@ -1,13 +1,75 @@
+/* charts.css - Updated with Weight/ML styles matching dark purple theme */
+
 body {
   background: #0d0d0d;
   color: white;
   font-family: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
   margin: 0;
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
   min-height: 100vh;
   padding: 20px;
+}
+
+/* Tab Navigation */
+.tab-container {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  margin: 20px auto 30px;
+  max-width: 500px;
+  width: 100%;
+}
+
+.tab-btn {
+  flex: 1;
+  padding: 15px 30px;
+  background: rgba(155, 89, 182, 0.2);
+  border: 2px solid rgba(142, 68, 173, 0.4);
+  border-radius: 12px;
+  color: #d8b4ff;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.tab-btn:hover {
+  background: rgba(155, 89, 182, 0.3);
+  border-color: rgba(142, 68, 173, 0.6);
+  transform: translateY(-2px);
+}
+
+.tab-btn.active {
+  background: linear-gradient(135deg, #9b59b6, #8e44ad);
+  border-color: #b084f7;
+  box-shadow: 0 4px 15px rgba(155, 89, 182, 0.4);
+}
+
+/* Tab Content */
+.tab-content {
+  display: none;
+  width: 100%;
+}
+
+.tab-content.active {
+  display: flex;
+  justify-content: center;
+  animation: fadeIn 0.4s ease;
+}
+
+/* Dashboard Container */
+.dashboard-container {
+  background: #494949;
+  padding: 20px;
+  border-radius: 20px;
+  position: relative;
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  max-width: 400px;
 }
 
 .dashboard {
@@ -18,6 +80,114 @@ body {
   position: relative;
   width: 100%;
   max-width: 350px;
+}
+
+/* Weight Dashboard */
+.weight-dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+  max-width: 350px;
+}
+
+.weight-card,
+.ml-prediction-card,
+.weight-history-card {
+  background: rgba(155, 89, 182, 0.15);
+  border: 2px solid rgba(142, 68, 173, 0.3);
+  border-radius: 15px;
+  padding: 20px;
+}
+
+.weight-card h2,
+.ml-prediction-card h2,
+.weight-history-card h2 {
+  font-size: 18px;
+  margin: 0 0 15px 0;
+  color: #b084f7;
+  font-weight: 600;
+}
+
+/* Weight Display */
+.weight-display {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  margin: 20px 0;
+}
+
+.weight-number {
+  font-size: 56px;
+  font-weight: 700;
+  color: #d8b4ff;
+}
+
+.weight-unit {
+  font-size: 24px;
+  margin-left: 8px;
+  color: rgba(216, 180, 255, 0.6);
+}
+
+.log-weight-btn {
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(135deg, #9b59b6, #8e44ad);
+  border: none;
+  border-radius: 12px;
+  color: white;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(155, 89, 182, 0.4);
+}
+
+.log-weight-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(155, 89, 182, 0.6);
+  background: linear-gradient(135deg, #b47bd9, #9b59b6);
+}
+
+/* ML Prediction */
+.prediction-label {
+  font-size: 14px;
+  color: rgba(216, 180, 255, 0.7);
+  margin-bottom: 10px;
+  text-align: center;
+}
+
+.prediction-display {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  margin: 15px 0;
+}
+
+.prediction-number {
+  font-size: 48px;
+  font-weight: 700;
+  color: #b084f7;
+}
+
+.prediction-unit {
+  font-size: 20px;
+  margin-left: 8px;
+  color: rgba(216, 180, 255, 0.6);
+}
+
+.prediction-description {
+  text-align: center;
+  font-size: 14px;
+  color: rgba(216, 180, 255, 0.8);
+  font-style: italic;
+}
+
+/* Weight Chart */
+#weightChart {
+  width: 100% !important;
+  height: auto !important;
+  border-radius: 10px;
 }
 
 .clickable {
@@ -204,21 +374,30 @@ body {
   line-height: 1.6;
 }
 
-.placeholder-link {
+.placeholder-link,
+#logFoodBtn,
+#saveWeightBtn {
   display: inline-block;
   margin-top: 20px;
   padding: 12px 24px;
-  background: rgba(155, 89, 182, 0.3);
-  color: #d8b4ff;
+  background: linear-gradient(135deg, #9b59b6, #8e44ad);
+  color: white;
   text-decoration: none;
+  border: none;
   border-radius: 8px;
-  border: 1px solid #8e44ad;
   transition: all 0.3s ease;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 600;
+  box-shadow: 0 4px 15px rgba(155, 89, 182, 0.4);
 }
 
-.placeholder-link:hover {
-  background: rgba(155, 89, 182, 0.5);
+.placeholder-link:hover,
+#logFoodBtn:hover,
+#saveWeightBtn:hover {
   transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(155, 89, 182, 0.6);
+  background: linear-gradient(135deg, #b47bd9, #9b59b6);
 }
 
 .close-hint {
@@ -228,19 +407,9 @@ body {
   font-style: italic;
 }
 
-/* Gray container behind dashboard */
-.dashboard-container {
-  background: #494949; /* light gray bg */
-  padding: 20px;
-  border-radius: 20px;
-  position: relative;
-  display: flex;
-  justify-content: center;
-}
-
 /* Pantry button top-right */
 .pantry-button {
-  position: absolute;
+  position: fixed;
   top: 20px;
   right: 20px;
   background: linear-gradient(135deg, #9b59b6, #8e44ad);
@@ -252,7 +421,7 @@ body {
   text-decoration: none;
   box-shadow: 0 4px 15px rgba(155, 89, 182, 0.4);
   transition: all 0.3s ease;
-  z-index: 20; /* above dashboard container */
+  z-index: 100;
 }
 
 .pantry-button:hover {
@@ -290,6 +459,74 @@ body {
   font-size: 14px;
 }
 
+/* Scanner Area */
+.scanner-area {
+  text-align: center;
+}
+
+#camera {
+  border-radius: 10px;
+  margin-bottom: 15px;
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  border: 2px solid #8e44ad;
+}
+
+#scanResult {
+  margin: 15px 0;
+  color: #d8b4ff;
+  font-weight: 500;
+}
+
+#logSection {
+  margin-top: 15px;
+}
+
+#logSection label {
+  color: #d8b4ff;
+  font-weight: 600;
+  margin-right: 10px;
+}
+
+#gramsInput,
+#weightInput {
+  padding: 8px;
+  border: 2px solid #8e44ad;
+  border-radius: 8px;
+  font-size: 14px;
+  margin-right: 10px;
+  background: rgba(155, 89, 182, 0.1);
+  color: #d8b4ff;
+}
+
+/* Weight Input Area */
+.weight-input-area {
+  text-align: center;
+  margin: 20px 0;
+}
+
+.weight-input-area label {
+  display: block;
+  color: #d8b4ff;
+  font-weight: 600;
+  margin-bottom: 10px;
+  font-size: 16px;
+}
+
+#weightInput {
+  width: 200px;
+  padding: 12px;
+  border: 2px solid #8e44ad;
+  border-radius: 10px;
+  font-size: 18px;
+  text-align: center;
+  margin-bottom: 15px;
+  background: rgba(155, 89, 182, 0.1);
+  color: #d8b4ff;
+}
+
+/* Animations */
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -321,5 +558,27 @@ body {
   100% {
     transform: scale(1);
     opacity: 1;
+  }
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .tab-container {
+    flex-direction: column;
+    gap: 10px;
+    padding: 0 10px;
+  }
+
+  .weight-number {
+    font-size: 42px;
+  }
+
+  .prediction-number {
+    font-size: 36px;
+  }
+
+  .dashboard,
+  .weight-dashboard {
+    max-width: 100%;
   }
 }

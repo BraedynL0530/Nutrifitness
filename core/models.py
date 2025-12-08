@@ -25,6 +25,28 @@ class FitnessProfile(models.Model):
     def __str__(self):
         return self.user.username
 
+    def get_latest_weight(self):
+        """Get most recent logged weight, or profile weight as fallback"""
+        latest_log = self.weight_logs.first()  # ordered by date
+        return latest_log.weight if latest_log else self.weightKg
+
+    def update_weight(self, new_weight):
+        """Update current weight and create log entry"""
+        self.weightKg = new_weight
+        self.save()
+        WeightLog.objects.create(profile=self, weight=new_weight)
+
+
+class WeightLog(models.Model):
+    profile = models.ForeignKey(FitnessProfile, on_delete=models.CASCADE, related_name="weight_logs")
+    weight = models.FloatField()
+    date = models.DateField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-date']
+
+    def __str__(self):
+        return f"{self.profile.user.username} - {self.weight}kg on {self.date}"
 
 class FoodItem(models.Model):
     name = models.CharField(max_length=200)

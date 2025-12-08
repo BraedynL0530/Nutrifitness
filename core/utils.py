@@ -79,7 +79,7 @@ def readFoodData(barcode):
     return None
 
 def simplifyFoodData(product,barcode):
-    print("SIMPLIFED FOOD DATA:")
+    print("SIMPLIFIED FOOD DATA:")
     return {
         "name": product.get("product_name", "Unknown"),
         "brand": product.get("brands", "Unknown"),

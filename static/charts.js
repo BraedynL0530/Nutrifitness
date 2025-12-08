@@ -1,11 +1,30 @@
 document.addEventListener("DOMContentLoaded", () => {
+  const tabBtns = document.querySelectorAll(".tab-btn");
+  const tabContents = document.querySelectorAll(".tab-content");
+
+  tabBtns.forEach(btn => {
+    btn.addEventListener("click", () => {
+      const targetTab = btn.getAttribute("data-tab");
+
+      // Remove active from all
+      tabBtns.forEach(b => b.classList.remove("active"));
+      tabContents.forEach(c => c.classList.remove("active"));
+
+      // Add active to clicked
+      btn.classList.add("active");
+      document.getElementById(`${targetTab}-tab`).classList.add("active");
+    });
+  });
+
   // ---------- Load data from Django template ----------
   const chartData = JSON.parse(document.getElementById("chart-data").textContent);
+  const weightData = JSON.parse(document.getElementById("weight-data").textContent);
 
   // ---------- Semicircle (macros) ----------
   const canvas = document.getElementById("macroChart");
   const ctx = canvas.getContext("2d");
   const macros = chartData.macros;
+
 
   const total = Object.values(macros).reduce((a, b) => a + b, 0);
   let start = Math.PI;
@@ -35,10 +54,68 @@ document.addEventListener("DOMContentLoaded", () => {
 
   document.getElementById("calorieText").innerText = `${eaten} / ${goal} kcal`;
 
+  // ---------- Weight History Chart ----------
+  if (weightData.history && weightData.history.length > 0) {
+    const weightCanvas = document.getElementById("weightChart");
+    const weightCtx = weightCanvas.getContext("2d");
+
+    const weights = weightData.history.map(w => w.weight);
+    const dates = weightData.history.map(w => w.date);
+
+    const maxWeight = Math.max(...weights) + 2;
+    const minWeight = Math.min(...weights) - 2;
+    const range = maxWeight - minWeight;
+
+    const width = weightCanvas.width;
+    const height = weightCanvas.height;
+    const padding = 40;
+
+    // Draw axes
+    weightCtx.strokeStyle = "rgba(255, 255, 255, 0.3)";
+    weightCtx.lineWidth = 2;
+    weightCtx.beginPath();
+    weightCtx.moveTo(padding, padding);
+    weightCtx.lineTo(padding, height - padding);
+    weightCtx.lineTo(width - padding, height - padding);
+    weightCtx.stroke();
+
+    // Draw line
+    weightCtx.strokeStyle = "#b084f7";
+    weightCtx.lineWidth = 3;
+    weightCtx.beginPath();
+
+    weights.forEach((weight, i) => {
+      const x = padding + ((width - 2 * padding) / (weights.length - 1)) * i;
+      const y = height - padding - ((weight - minWeight) / range) * (height - 2 * padding);
+
+      if (i === 0) {
+        weightCtx.moveTo(x, y);
+      } else {
+        weightCtx.lineTo(x, y);
+      }
+
+      // Draw points
+      weightCtx.fillStyle = "#fff";
+      weightCtx.beginPath();
+      weightCtx.arc(x, y, 4, 0, Math.PI * 2);
+      weightCtx.fill();
+    });
+
+    weightCtx.stroke();
+
+    // Add labels
+    weightCtx.fillStyle = "rgba(255, 255, 255, 0.7)";
+    weightCtx.font = "12px Arial";
+    weightCtx.textAlign = "right";
+    weightCtx.fillText(`${maxWeight.toFixed(0)}kg`, padding - 5, padding + 5);
+    weightCtx.fillText(`${minWeight.toFixed(0)}kg`, padding - 5, height - padding + 5);
+  }
+
   // ---------- Overlay controls ----------
   const macroOverlay = document.getElementById("macroOverlay");
   const calOverlay = document.getElementById("calOverlay");
   const scanOverlay = document.getElementById("scanOverlay");
+  const weightOverlay = document.getElementById("weightOverlay");
 
   // ---------- Semicircle click - show macros and micros ----------
   canvas.addEventListener("click", () => {
@@ -61,6 +138,46 @@ document.addEventListener("DOMContentLoaded", () => {
   // ---------- Plus button click - show scan overlay ----------
   document.getElementById("plusButton").addEventListener("click", () => {
     scanOverlay.classList.add("show");
+  });
+
+  // ---------- Log weight button click ----------
+  const logWeightBtn = document.getElementById("logWeightBtn");
+  if (logWeightBtn) {
+    logWeightBtn.addEventListener("click", () => {
+      weightOverlay.classList.add("show");
+    });
+  }
+
+  // ---------- Save weight ----------
+  document.getElementById("saveWeightBtn").addEventListener("click", async () => {
+    const weight = parseFloat(document.getElementById("weightInput").value);
+
+    if (!weight || weight <= 0) {
+      alert("Enter a valid weight.");
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/weight-log/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ weight: weight }),
+      });
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error("Server error:", errorText);
+        alert("Failed to save weight.");
+        return;
+      }
+
+      alert("Weight logged! Refreshing...");
+      location.reload();
+
+    } catch (error) {
+      console.error("Error logging weight:", error);
+      alert("Error logging weight.");
+    }
   });
 
   // ---------- Barcode scanner ----------

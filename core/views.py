@@ -9,7 +9,10 @@ from django.shortcuts import render, redirect
 from django.contrib.auth import login, authenticate
 from django.contrib.auth.forms import UserCreationForm
 from django.views.decorators.csrf import csrf_exempt
-from .models import FitnessProfile, DailyLog, PantryItem,FoodItem
+from pyexpat import features
+
+from .models import FitnessProfile, DailyLog, PantryItem,FoodItem,WeightLog
+import joblib
 
 from . import utils
 # Create your views here.
@@ -71,8 +74,11 @@ def questionnaireData(request):
 
         print(data)
         return JsonResponse({'status': 'success'})
+
+@login_required(login_url='/login/')
 def dashboard(request):
     profile = FitnessProfile.objects.get(user=request.user)
+    weight_logs = profile.weight_logs.all()[:30]
     today = date.today()
     totals = DailyLog.get_daily_totals(profile, today)
     dailyCalories = totals.get("calories")
@@ -98,13 +104,25 @@ def dashboard(request):
         "eaten_calories": dailyCalories,
     }
 
+    weightData = {
+        'current_weight': profile.get_latest_weight(),
+        #'prediction': calculate_prediction(profile),
+        'history': [
+            {'date': log.date.strftime('%Y-%m-%d'), 'weight': log.weight}
+            for log in weight_logs
+        ]
+    }
+
 
     return render(request, 'dashboard.html', {
         "data": data,
-        "data_json": json.dumps(data)
+        "data_json": json.dumps(data),
+        "weightData": weightData,
+        "weightData_json": json.dumps(weightData),
     })
 
 
+@login_required(login_url='/login/')
 def myPantry(request):
     profile = FitnessProfile.objects.get(user=request.user)
     pantry_items = profile.pantry.select_related('food').all()
@@ -208,7 +226,18 @@ def saveItem(request):
             "food_name": name,
         })
 
+@csrf_exempt
+def saveWeight(request):
+    if request.method == 'POST':
+        profile = FitnessProfile.objects.get(user=request.user)
+        data = json.loads(request.body)
+        weight = data.get('weight')
+        profile.update_weight(weight)
+        return JsonResponse({'status': 'success'})
+    return None
 
+
+@csrf_exempt
 def aiRecipe(request):
     try:
         profile = FitnessProfile.objects.get(user=request.user)
@@ -250,3 +279,13 @@ def aiRecipe(request):
         import traceback
         traceback.print_exc()
         return JsonResponse({"error": str(e)}, status=500)
+
+@csrf_exempt
+def habitToWeight(request):     # Need to create a weekly ORM model. Calculate average values for each week, assign weights to each week, and store feed here for features here.
+    weightLog = WeightLog
+    profile = FitnessProfile.objects.get(user=request.user)
+    model = joblib.load("weight_prediction_model.joblib") # Needs update look at repo issues for more info about this
+    weight = weightLog.objects.filter(profile=profile).last().weight
+    features= []
+    predicted_weight_change = model.predict(features)
+    pass

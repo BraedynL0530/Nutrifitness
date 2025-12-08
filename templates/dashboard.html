@@ -11,28 +11,82 @@
 
   <a href="/pantry" class="pantry-button">My Pantry</a>
 
-  <div class="dashboard-container">
-    <div class="dashboard">
-      <canvas id="macroChart" width="320" height="160" class="clickable"></canvas>
+    <!-- Tab Navigation -->
+  <div class="tab-container">
+    <button class="tab-btn active" data-tab="food">Food Tracking</button>
+    <button class="tab-btn" data-tab="weight">Weight Log</button>
+  </div>
 
-      <div class="food-log-block">
-          <h3>Food Eaten</h3>
-          <ul id="foodLog">
-              <li>no data link later</li>
-              <!-- js will inject the data here. example below! -->
-            <!-- <li>Crackers — 10 kcal</li> -->
-          </ul>
-      </div>
+  <!-- Food Tracking Tab -->
+  <div class="tab-content active" id="food-tab">
+      <div class="dashboard-container">
+        <div class="dashboard">
+          <canvas id="macroChart" width="320" height="160" class="clickable"></canvas>
 
-      <div class="middle-area">
-        <div id="plusButton">+</div>
-      </div>
+          <div class="food-log-block">
+              <h3>Food Eaten</h3>
+              <ul id="foodLog">
+                  <li>no data link later</li>
+                  <!-- js will inject the data here. example below! -->
+                <!-- <li>Crackers — 10 kcal</li> -->
+              </ul>
+          </div>
 
-      <div class="bar-container clickable">
-        <div class="bar-bg">
-          <div id="bar-fill"></div>
+          <div class="middle-area">
+            <div id="plusButton">+</div>
+          </div>
+
+          <div class="bar-container clickable">
+            <div class="bar-bg">
+              <div id="bar-fill"></div>
+            </div>
+            <p id="calorieText"></p>
+          </div>
         </div>
-        <p id="calorieText"></p>
+      </div>
+  </div>
+
+<!-- Weight & ML Tab -->
+  <div class="tab-content" id="weight-tab">
+    <div class="dashboard-container">
+      <div class="weight-dashboard">
+
+        <div class="weight-card">
+          <h2>Current Weight</h2>
+          <div class="weight-display">
+            <span class="weight-number">{{ weight_data.current_weight|default:"--" }}</span>
+            <span class="weight-unit">kg</span>
+          </div>
+          <button class="log-weight-btn" id="logWeightBtn">Log Weight</button>
+        </div>
+
+        <div class="ml-prediction-card">
+          <h2>ML Prediction</h2>
+          <p class="prediction-label">Based on your eating trends:</p>
+          <div class="prediction-display">
+            <span class="prediction-number">{{ weight_data.prediction|default:"--" }}</span>
+            <span class="prediction-unit">kg/week</span>
+          </div>
+          <p class="prediction-description">
+            {% if weight_data.prediction %}
+              {% if weight_data.prediction > 0 %}
+                Expected weight gain
+              {% elif weight_data.prediction < 0 %}
+                Expected weight loss
+              {% else %}
+                Weight maintenance
+              {% endif %}
+            {% else %}
+              Log more meals for prediction
+            {% endif %}
+          </p>
+        </div>
+
+        <div class="weight-history-card">
+          <h2>Weight History</h2>
+          <canvas id="weightChart" width="320" height="200"></canvas>
+        </div>
+
       </div>
     </div>
   </div>
@@ -83,8 +137,22 @@
     </div>
   </div>
 
+    <!-- Overlay for weight logging -->
+  <div id="weightOverlay" class="overlay">
+    <div class="overlay-box">
+      <h2>Log Your Weight</h2>
+      <div class="weight-input-area">
+        <label>Weight (kg):</label>
+        <input type="number" id="weightInput" step="0.1" min="1" placeholder="70.5">
+        <button id="saveWeightBtn">Save Weight</button>
+      </div>
+      <p class="close-hint">Tap outside to close</p>
+    </div>
+  </div>
+
   <!-- Inject Django data into JavaScript - THIS IS THE IMPORTANT PART -->
   {{ data|json_script:"chart-data" }}
+  {{ weight_data|json_script:"weight-data" }}
 
   <script src="{% static 'charts.js' %}"></script>
 </body>
