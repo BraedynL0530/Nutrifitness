@@ -120,9 +120,10 @@ def generateRecipe(ingredients, allergies, diet):
         return None
 
     prompt = (
-        f"You are a nutrition assistant. Create a healthy recipe with detailed instructions using some of {', '.join(ingredients)}, "
+        f"You are a nutrition assistant. Create a healthy recipe with detailed instructions using{', '.join(ingredients)}, "
         f"dietary preferences: {', '.join(diet) if diet else 'none'}, "
         f"avoid allergens: {', '.join(allergies) if allergies else 'none'}. "
+        f"Dont use any other ingredients than those specified or common seasonings, you dont have to include all ingredients."
         f"Include calories, macros, and micronutrients in structured JSON format.")
     stream = client.chat.completions.create(
         model="llama3.1-8b", # Dudes changed the model since i last added this i was wondering the issue may experiment with models

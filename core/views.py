@@ -128,7 +128,7 @@ def dashboard(request):
     return render(request, 'dashboard.html', {
         "data": data,
         "foodsData": foodsData,
-        "weightData": weightData,       #removed redundant json data
+        "weightData": weightData,       # Removed redundant json data template does it for me
         "user":request.user,
     })
 
