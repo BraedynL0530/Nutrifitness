@@ -44,7 +44,7 @@ class WeightLog(models.Model):
     date = models.DateField(auto_now_add=True)
 
     class Meta:
-        ordering = ['-date']
+        ordering = ['-date','-id'] # Prevents same day logging being weird
 
     def __str__(self):
         return f"{self.profile.user.username} - {self.weight}kg on {self.date}"
@@ -117,6 +117,25 @@ class DailyLog(models.Model):
                         totals[key] += value * log.quantity
 
         return dict(totals)
+
+    @classmethod
+    def get_daily_foods(cls, profile, date=None):
+        """Return food items consumed on a given day."""
+        if date is None:
+            date = timezone.localdate()
+
+        logs = cls.objects.filter(profile=profile, date=date)
+        foods = []
+
+        for log in logs:
+            foods.append({
+                'name': log.food.name,
+                'calories': (log.food.calories or 0) * log.quantity,
+                'quantity': log.quantity,
+            })
+
+        return foods
+
 
 class WeeklySummary(models.Model):
     profile = models.ForeignKey(FitnessProfile, on_delete=models.CASCADE, related_name="weekly_summary")

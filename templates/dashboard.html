@@ -28,10 +28,10 @@
           <div class="food-log-block">
               <h3>Food Eaten</h3>
               <ul id="foodLog">
-                  <li>no data link later</li>
-                  <!-- js will inject the data here. example below! -->
-                <!-- <li>Crackers — 10 kcal</li> -->
-              </ul>
+                {% for food in foodsData %}
+                    <li>{{ food.name }} — {{ food.calories|floatformat:0 }} kcal</li>
+                {% endfor %}
+                </ul>
           </div>
 
           <div class="middle-area">
@@ -56,7 +56,7 @@
         <div class="weight-card">
           <h2>Current Weight</h2>
           <div class="weight-display">
-            <span class="weight-number">{{ weight_data.current_weight|default:"--" }}</span>
+            <span class="weight-number">{{ weightData.current_weight|default:"--" }}</span>
             <span class="weight-unit">kg</span>
           </div>
           <button class="log-weight-btn" id="logWeightBtn">Log Weight</button>
@@ -66,14 +66,14 @@
           <h2>ML Prediction</h2>
           <p class="prediction-label">Based on your eating trends:</p>
           <div class="prediction-display">
-            <span class="prediction-number">{{ weight_data.prediction|default:"--" }}</span>
+            <span class="prediction-number">{{ weightData.prediction|default:"--" }}</span>
             <span class="prediction-unit">kg/week</span>
           </div>
           <p class="prediction-description">
-            {% if weight_data.prediction %}
-              {% if weight_data.prediction > 0 %}
+            {% if weightData.prediction %}
+              {% if weightData.prediction > 0 %}
                 Expected weight gain
-              {% elif weight_data.prediction < 0 %}
+              {% elif weightData.prediction < 0 %}
                 Expected weight loss
               {% else %}
                 Weight maintenance
@@ -154,7 +154,8 @@
 
   <!-- Inject Django data into JavaScript - THIS IS THE IMPORTANT PART -->
   {{ data|json_script:"chart-data" }}
-  {{ weight_data|json_script:"weight-data" }}
+  {{ weightData|json_script:"weight-data" }}
+  {{ foodsData|json_script:"foods-data" }}
 
   <script src="{% static 'charts.js' %}"></script>
 </body>

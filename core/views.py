@@ -82,7 +82,7 @@ def dashboard(request):
     weight_logs = profile.weight_logs.all()[:30]
 
     # Get ML prediction
-    predicted_change = utils.getWeightPrediction(profile)
+    predicted_change = utils.getWeightPrediction(profile) # No beuno (yet) other than that project done!
 
     totals = DailyLog.get_daily_totals(profile, today)
     dailyCalories = totals.get("calories")
@@ -109,7 +109,7 @@ def dashboard(request):
     }
 
     weightData = {
-        'current_weight': profile.get_latest_weight(), #not displaying check later
+        'current_weight': profile.get_latest_weight(),
         'prediction': predicted_change,
         'history': [
             {'date': log.date.strftime('%Y-%m-%d'), 'weight': log.weight}
@@ -117,12 +117,18 @@ def dashboard(request):
         ]
     }
 
+    foods = DailyLog.get_daily_foods(profile, today)
+
+    foodsData = foods
+
+    print(predicted_change)
     print(weightData)
+    print("DEBUG current_weight:", weightData.get('current_weight'))
+    print("DEBUG history:", weightData.get('history'))
     return render(request, 'dashboard.html', {
         "data": data,
-        "data_json": json.dumps(data),
-        "weightData": weightData,
-        "weightData_json": json.dumps(weightData),
+        "foodsData": foodsData,
+        "weightData": weightData,       #removed redundant json data
         "user":request.user,
     })
 
