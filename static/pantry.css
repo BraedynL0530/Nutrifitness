@@ -1,326 +1,34 @@
-body {
-  background: #0d0d0d;
-  color: white;
-  font-family: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
-  margin: 0;
-  padding: 20px;
-  min-height: 100vh;
+/* Add responsive design */
+@media screen and (max-width: 768px) {
+  .pantry-container {
+    flex-direction: column;
+    width: 100%;
+  }
+  .pantry-items {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  }
 }
 
-/* Back button */
-.back-button {
-  position: fixed;
-  top: 20px;
-  left: 20px;
-  background: linear-gradient(135deg, #9b59b6, #8e44ad);
-  color: white;
-  font-weight: 500;
-  padding: 12px 24px;
-  border-radius: 25px;
-  text-decoration: none;
-  box-shadow: 0 4px 15px rgba(155, 89, 182, 0.4);
-  transition: all 0.3s ease;
-  z-index: 100;
-}
-
-.back-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(155, 89, 182, 0.6);
-}
-
-/* Main container */
-.pantry-container {
-  max-width: 800px;
-  margin: 60px auto 100px;
-  padding: 30px;
-  background: #494949;
-  border-radius: 20px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
-}
-
-.pantry-container h1 {
-  text-align: center;
-  color: #b084f7;
-  margin-top: 0;
-  margin-bottom: 30px;
-  font-size: 32px;
-}
-
-/* Pantry items grid */
-.pantry-items {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: 15px;
-}
-
-.empty-message {
-  grid-column: 1 / -1;
-  text-align: center;
-  color: #8e7ba3;
-  font-style: italic;
-  padding: 40px;
-}
-
-/* Individual pantry item card */
-.pantry-item {
-  background: rgba(155, 89, 182, 0.15);
-  border: 1px solid #8e44ad;
-  border-radius: 12px;
-  padding: 15px;
-  transition: all 0.3s ease;
-}
-
+/* Pantry item hover animation */
 .pantry-item:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 5px 20px rgba(155, 89, 182, 0.3);
-  border-color: #b084f7;
+  transition: transform 0.3s, box-shadow 0.3s;
+  transform: translateY(-5px);
+  box-shadow: 0 8px 15px rgba(155, 89, 182, 0.5);
 }
 
-.pantry-item-name {
-  font-size: 18px;
-  font-weight: 600;
-  color: #d8b4ff;
-  margin: 0 0 8px 0;
-}
-
-.pantry-item-brand {
-  font-size: 14px;
-  color: #9b7acf;
-  margin: 0 0 8px 0;
-}
-
-.pantry-item-info {
-  font-size: 13px;
-  color: #c9b3e8;
-  margin: 4px 0;
-}
-
-.pantry-item-quantity {
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px solid rgba(142, 68, 173, 0.3);
-  font-size: 14px;
-  color: #b084f7;
-  font-weight: 500;
-}
-
-/* Floating scan button */
+/* Floating button animation */
 .scan-button {
-  position: fixed;
-  bottom: 30px;
-  right: 30px;
-  width: 70px;
-  height: 70px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #9b59b6, #8e44ad);
-  color: white;
-  font-size: 42px;
-  font-weight: 300;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(155, 89, 182, 0.4);
-  z-index: 50;
+  animation: pulse 1.5s infinite;
 }
 
-.scan-button:hover {
-  transform: scale(1.15);
-  background: linear-gradient(135deg, #b47bd9, #9b59b6);
-  box-shadow: 0 6px 20px rgba(155, 89, 182, 0.6);
-}
-
-.scan-button:active {
-  transform: scale(0.95);
-}
-
-/* Overlay */
-.overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(10, 0, 20, 0.85);
-  display: none;
-  justify-content: center;
-  align-items: center;
-  z-index: 100;
-  backdrop-filter: blur(8px);
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-
-.overlay.show {
-  display: flex;
-  animation: fadeIn 0.3s ease forwards;
-}
-
-.overlay-box {
-  background: linear-gradient(145deg, #1a0825, #2a1035);
-  border: 2px solid #8e44ad;
-  border-radius: 20px;
-  padding: 30px;
-  text-align: center;
-  color: #e0d2ff;
-  width: 90%;
-  max-width: 400px;
-  max-height: 80vh;
-  overflow-y: auto;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
-  transform: scale(0.9);
-  opacity: 0;
-}
-
-.overlay.show .overlay-box {
-  animation: zoomInBounce 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
-}
-
-.overlay h2 {
-  color: #b084f7;
-  margin-top: 0;
-  margin-bottom: 20px;
-  font-size: 24px;
-}
-
-.scanner-area {
-  margin: 20px 0;
-}
-
-#camera {
-  border-radius: 12px;
-  border: 2px solid #8e44ad;
-  margin-bottom: 15px;
-}
-
-.capture-btn {
-  display: inline-block;
-  padding: 12px 24px;
-  background: linear-gradient(135deg, #9b59b6, #8e44ad);
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-size: 16px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(155, 89, 182, 0.4);
-}
-
-.capture-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(155, 89, 182, 0.6);
-}
-
-#scanResult {
-  margin-top: 15px;
-  font-size: 15px;
-  color: #d8b4ff;
-  line-height: 1.6;
-  min-height: 60px;
-}
-
-.add-pantry-btn {
-  margin-top: 15px;
-  padding: 10px 20px;
-  background: linear-gradient(135deg, #9b59b6, #8e44ad);
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.add-pantry-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 15px rgba(155, 89, 182, 0.5);
-}
-
-.close-hint {
-  margin-top: 20px;
-  font-size: 13px;
-  color: #8e7ba3;
-  font-style: italic;
-}
-
-/* Animations */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes zoomInBounce {
+@keyframes pulse {
   0% {
-    transform: scale(0.5);
-    opacity: 0;
+    transform: scale(1);
   }
   50% {
-    transform: scale(1.05);
+    transform: scale(1.1);
   }
   100% {
     transform: scale(1);
-    opacity: 1;
   }
-}
-
-/* Recipe section */
-.recipe-section {
-  margin-top: 30px;
-  text-align: center;
-}
-
-.generate-recipe-btn {
-  padding: 15px 30px;
-  background: linear-gradient(135deg, #9b59b6, #8e44ad);
-  color: white;
-  border: none;
-  border-radius: 10px;
-  font-size: 18px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(155, 89, 182, 0.4);
-}
-
-.generate-recipe-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(155, 89, 182, 0.6);
-}
-
-.generate-recipe-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-  transform: none;
-}
-
-.retry-btn {
-  margin-left: 10px;
-  padding: 12px 18px;
-  background: rgba(155, 89, 182, 0.3);
-  color: #d8b4ff;
-  border: 1px solid #8e44ad;
-  border-radius: 8px;
-  font-size: 20px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.retry-btn:hover {
-  background: rgba(155, 89, 182, 0.5);
-  transform: rotate(180deg);
-}
-
-.recipe-result {
-  margin-top: 20px;
-  padding: 20px;
-  background: rgba(155, 89, 182, 0.1);
-  border: 1px solid #8e44ad;
-  border-radius: 12px;
-  min-height: 50px;
-  text-align: center;
 }
