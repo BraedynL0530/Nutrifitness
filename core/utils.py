@@ -4,8 +4,8 @@ import requests
 from cerebras.cloud.sdk import Cerebras
 from dotenv import load_dotenv
 import joblib
-
-
+import uuid
+import time
 def calcBmi(weightKg, heightCm):
     heightMeter = heightCm / 100.0
     bmi = weightKg / (heightMeter * heightMeter)
@@ -23,9 +23,9 @@ def calcBmiCat(bmi):
 
 def calcBmr(weightKg,heightCm,age, sex):
     if sex == 'male':
-        bmr = 10 * weightKg + 6.25 * heightCm - 5 * age + 5
+        bmr = 10 * weightKg + 6.25 * heightCm - 5 * int(age) + 5
     else:
-        bmr = 10 * weightKg + 6.25 * heightCm - 5 * age - 161
+        bmr = 10 * weightKg + 6.25 * heightCm - 5 * int(age) - 161
     return round(bmr)
 
 lifeStyleFactors = {
@@ -67,17 +67,65 @@ def readFoodData(barcode):
         res.raise_for_status()
         data = res.json()
         if 'product' in data:
-            print("Food data found ✅")
+            print("Food data found ")
             product = data['product']
             product = simplifyFoodData(product, barcode)
             return product
         else:
             print("No product found.")
     except requests.Timeout:
-        print("⚠️ Request timed out. Try again later.")
+        print("Request timed out. Try again later.")
     except requests.RequestException as e:
-        print(f"⚠️ Error fetching data: {e}")
+        print(f"Error fetching data: {e}")
     return None
+
+def searchFoods(query):
+    url = "https://world.openfoodfacts.org/api/v2/search"
+    params = {
+        "search_terms": query,
+        "json": 1,
+        "page_size": 6,
+        "fields": "product_name,brands,code,nutriments,allergens_tags,categories"
+    }
+    headers = {
+        "User-Agent": "Nutrifitness - Android - Version 1.0 - https://nutrifitness.com",
+        "Accept": "application/json"
+    }
+
+    for attempt in range(3):
+        try:
+            res = requests.get(url, params=params, headers=headers, timeout=8)
+
+            if res.status_code == 503:
+                print(f"503 on attempt {attempt + 1}, retrying...")
+                time.sleep(1.5 * (attempt + 1))  # wait 1.5s, 3s, 4.5s
+                continue
+
+            if res.status_code != 200:
+                print(f"Unexpected status: {res.status_code}")
+                return []
+
+            if not res.text.strip():
+                return []
+
+            products = res.json().get("products", [])
+            results = []
+            for p in products:
+                if p.get("product_name"):
+                    results.append(simplifyFoodData(
+                        p, p.get("code", f"search_{uuid.uuid4().hex[:8]}")
+                    ))
+            return results
+
+        except ValueError as e:
+            print(f"JSON parse error: {e}")
+            return []
+        except Exception as e:
+            print(f"Food search error: {e}")
+            return []
+
+    print("All 3 attempts failed")
+    return []
 
 def simplifyFoodData(product,barcode):
     print("SIMPLIFIED FOOD DATA:")

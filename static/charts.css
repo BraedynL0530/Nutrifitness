@@ -391,7 +391,21 @@ body {
   font-weight: 600;
   box-shadow: 0 4px 15px rgba(155, 89, 182, 0.4);
 }
+.mode-btn {
+  padding: 8px 14px;
+  background: rgba(155, 89, 182, 0.2);
+  border: 2px solid rgba(142, 68, 173, 0.4);
+  border-radius: 8px;
+  color: #d8b4ff;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s;
+}
 
+.mode-btn.active {
+  background: linear-gradient(135deg, #9b59b6, #8e44ad);
+  border-color: #b084f7;
+}
 .placeholder-link:hover,
 #logFoodBtn:hover,
 #saveWeightBtn:hover {

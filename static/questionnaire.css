@@ -29,7 +29,27 @@ main {
     padding: 2rem;
     box-shadow: 0 0 10px #5a4c72;
 }
+.goal-option {
+    background-color: #333;
+    color: #fff;
+    font-size: 1rem;
+    border: 2px solid #5a4c72;
+    border-radius: 15px;
+    padding: 1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-align: center;
+    width: 100%;
+    margin: 5px 0;
+}
 
+.goal-option:hover {
+    background-color: #7a63a7;
+}
+
+.goal-option.selected {
+    background-color: #9b85c1;
+}
 .question-card {
     display: none;
     text-align: center;

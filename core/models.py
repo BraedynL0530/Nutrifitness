@@ -156,7 +156,7 @@ class WeeklySummary(models.Model):
     ending_weight = models.FloatField(default=0)
     weight_change = models.FloatField(default=0)
 
-    class meta:
+    class Meta:
         ordering = ['-week_start']
         unique_together = ('profile', 'week_start')
 

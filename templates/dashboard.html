@@ -115,29 +115,81 @@
 
   <!-- Overlay for food scan -->
   <div id="scanOverlay" class="overlay">
-    <div class="overlay-box">
-      <h2>Scan / Log Food</h2>
-      <div class="scanner-area">
-          <video id="camera" width="300" height="200" autoplay playsinline></video>
-          <button class="placeholder-link" id="captureBtn">📷 Scan Barcode</button>
-          <p id="scanResult">Waiting for scan...</p>
-          <div id="logSection" style="display:none; margin-top:10px;">
-              <label>Grams eaten:</label>
-              <input type="number" id="gramsInput" value="50" min="1" style="width:80px;">
-              <button id="logFoodBtn">Log</button>
-            </div>
+  <div class="overlay-box">
+    <h2>Log Food</h2>
 
-          <div id="logSection" style="display:none; margin-top:10px;">
-            <label>Grams eaten:</label>
-            <input type="number" id="gramsInput" value="100" min="1" style="width:80px;">
-            <button id="logFoodBtn">Log Food</button>
-          </div>
-
-      </div>
-
-      <p class="close-hint">Tap outside to close</p>
+    <div style="display:flex; gap:8px; margin-bottom:15px; justify-content:center;">
+      <button onclick="setFoodMode('scan')" class="mode-btn active" id="btn-scan">📷 Scan</button>
+      <button onclick="setFoodMode('search')" class="mode-btn" id="btn-search">🔍 Search</button>
+      <button onclick="setFoodMode('manual')" class="mode-btn" id="btn-manual">✏️ Manual</button>
     </div>
+
+    <!-- Scan -->
+    <div id="scanMode">
+      <video id="camera" width="280" height="180" autoplay playsinline
+             style="border-radius:10px; border:2px solid #8e44ad; display:block; margin:0 auto;"></video>
+      <button class="placeholder-link" id="captureBtn" style="width:100%; margin-top:10px;">
+        📷 Capture & Scan
+      </button>
+      <p id="scanResult" style="margin:10px 0; color:#d8b4ff;">Point camera at barcode</p>
+      <div id="logSection" style="display:none; margin-top:10px;">
+        <label style="color:#d8b4ff;">Grams eaten:</label>
+        <input type="number" id="gramsInput" value="100" min="1"
+               style="width:80px; margin-left:8px; padding:6px; border:2px solid #8e44ad;
+                      border-radius:8px; background:rgba(155,89,182,0.1); color:#d8b4ff;">
+        <button id="logFoodBtn" class="placeholder-link" style="margin-top:10px; width:100%;">
+          Log Food
+        </button>
+      </div>
+    </div>
+
+    <!-- Search -->
+    <div id="searchMode" style="display:none;">
+      <div style="display:flex; gap:8px;">
+        <input type="text" id="foodSearchInput" placeholder="e.g. chicken breast, banana"
+               style="flex:1; padding:10px; border:2px solid #8e44ad; border-radius:8px;
+                      background:rgba(155,89,182,0.1); color:#d8b4ff; font-size:14px;"
+               onkeydown="if(event.key==='Enter') runFoodSearch()">
+        <button onclick="runFoodSearch()"
+                style="padding:10px 16px; background:#8e44ad; border:none; border-radius:8px;
+                       color:white; cursor:pointer; font-size:16px;">→</button>
+      </div>
+      <div id="searchResults" style="margin-top:10px; max-height:300px; overflow-y:auto;"></div>
+    </div>
+
+    <!-- Manual -->
+    <div id="manualMode" style="display:none;">
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        <input type="text" id="manualName" placeholder="Food name *"
+               style="padding:10px; border:2px solid #8e44ad; border-radius:8px;
+                      background:rgba(155,89,182,0.1); color:#d8b4ff;">
+        <input type="number" id="manualCalories" placeholder="Calories per 100g"
+               style="padding:10px; border:2px solid #8e44ad; border-radius:8px;
+                      background:rgba(155,89,182,0.1); color:#d8b4ff;">
+        <input type="number" id="manualProtein" placeholder="Protein (g per 100g)"
+               style="padding:10px; border:2px solid #8e44ad; border-radius:8px;
+                      background:rgba(155,89,182,0.1); color:#d8b4ff;">
+        <input type="number" id="manualCarbs" placeholder="Carbs (g per 100g)"
+               style="padding:10px; border:2px solid #8e44ad; border-radius:8px;
+                      background:rgba(155,89,182,0.1); color:#d8b4ff;">
+        <input type="number" id="manualFat" placeholder="Fat (g per 100g)"
+               style="padding:10px; border:2px solid #8e44ad; border-radius:8px;
+                      background:rgba(155,89,182,0.1); color:#d8b4ff;">
+        <input type="number" id="manualGrams" placeholder="Grams eaten" value="100"
+               style="padding:10px; border:2px solid #8e44ad; border-radius:8px;
+                      background:rgba(155,89,182,0.1); color:#d8b4ff;">
+        <button onclick="logManualFood()"
+                style="padding:12px; background:linear-gradient(135deg,#9b59b6,#8e44ad);
+                       border:none; border-radius:8px; color:white; font-weight:600;
+                       cursor:pointer; font-size:15px;">
+          Log Food
+        </button>
+      </div>
+    </div>
+
+    <p class="close-hint">Tap outside to close</p>
   </div>
+</div>
 
     <!-- Overlay for weight logging -->
   <div id="weightOverlay" class="overlay">

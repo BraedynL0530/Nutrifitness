@@ -21,7 +21,13 @@ document.addEventListener("DOMContentLoaded", () => {
             data[type] = btn.dataset.value;
         });
     });
-
+    document.querySelectorAll(".goal-option").forEach(btn => {
+    btn.addEventListener("click", () => {
+        document.querySelectorAll(".goal-option").forEach(b => b.classList.remove("selected"));
+        btn.classList.add("selected");
+        data.goal = btn.dataset.value;
+        });
+    });
     // Handle allergy multi-select
     document.querySelectorAll(".allergy-option").forEach(btn => {
         btn.addEventListener("click", () => {
@@ -42,6 +48,7 @@ document.addEventListener("DOMContentLoaded", () => {
         data.bench = document.getElementById("bench")?.value;
         data.squat = document.getElementById("squat")?.value;
         data.deadlift = document.getElementById("deadlift")?.value;
+        data.age = document.getElementById("age")?.value;
 
         if (currentQuestion < questions.length - 1) {
             currentQuestion++;

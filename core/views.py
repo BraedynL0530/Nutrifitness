@@ -1,6 +1,5 @@
 import json
 from datetime import date
-
 import cv2
 import numpy as np
 from django.contrib.auth.decorators import login_required
@@ -13,7 +12,7 @@ from datetime import timedelta
 from django.utils import timezone
 from .models import FitnessProfile, DailyLog, PantryItem,FoodItem,WeeklySummary
 from . import utils
-
+import uuid
 def register(request):
     #planning to add oauth later
     if request.method == "POST":
@@ -21,7 +20,7 @@ def register(request):
         if form.is_valid():
             user = form.save()
             login(request, user)  # auto-login
-            return redirect("home")
+            return redirect("More-About-You")
     else:
         form = UserCreationForm()
     return render(request, "register.html", {"form": form})
@@ -34,6 +33,9 @@ def questionnaire(request):
 def questionnaireData(request):
     if request.method == 'POST':
         data = json.loads(request.body)
+
+        if FitnessProfile.objects.filter(user=request.user).exists():
+            return JsonResponse({'status': 'Profile already exists'})
 
         profile = FitnessProfile.objects.create(
             user=request.user,
@@ -168,6 +170,17 @@ def uploadBarcode(request):
 
     return JsonResponse({"barcode": barcode})
 
+def searchFood(request):
+    query = request.GET.get("q", "").strip()
+    if not query or len(query) < 2:
+        return JsonResponse({"error": "Query too short"}, status=400)
+    results = utils.searchFoods(query)
+    return JsonResponse({"results": results})
+
+@csrf_exempt
+def generateBarcode(name):
+    barcode = str(uuid.uuid4())
+    return f"manual_{uuid.uuid4().hex[:12]}"
 
 
 @csrf_exempt
@@ -181,6 +194,9 @@ def saveFood(request):
         micronutrients = data.get("micronutrients", {})
         category = data.get("category", "")
         allergens = data.get("allergens", [])
+
+        if not barcode  or barcode == "unknown":
+            barcode = generateBarcode(name)
 
         food, created = FoodItem.objects.get_or_create(
             barcode=barcode,
