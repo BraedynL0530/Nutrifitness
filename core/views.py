@@ -10,9 +10,10 @@ from django.contrib.auth.forms import UserCreationForm
 from django.views.decorators.csrf import csrf_exempt
 from datetime import timedelta
 from django.utils import timezone
-from .models import FitnessProfile, DailyLog, PantryItem,FoodItem,WeeklySummary
+from .models import FitnessProfile, DailyLog, PantryItem,FoodItem,WeeklySummary, WeightLog
 from . import utils
 import uuid
+from django.core.cache import cache
 def register(request):
     #planning to add oauth later
     if request.method == "POST":
@@ -27,8 +28,11 @@ def register(request):
 
 @login_required(login_url='/login/')
 def questionnaire(request):
-    return render(request, 'questionnaire.html')
-
+    try:
+        profile = FitnessProfile.objects.get(user=request.user)
+        return redirect("")
+    except FitnessProfile.DoesNotExist:
+        return render(request, 'questionnaire.html')
 @csrf_exempt
 def questionnaireData(request):
     if request.method == 'POST':
@@ -66,16 +70,17 @@ def questionnaireData(request):
                 'deadlift': data.get('deadlift') or None,
             }
         )
-        #
-
-
+        WeightLog.objects.create(profile=profile, weight=float(data.get('weight'))) #fixxed 60kg defualt!
 
         print(data)
         return JsonResponse({'status': 'success'})
 
 @login_required(login_url='/login/')
 def dashboard(request):
-    profile = FitnessProfile.objects.get(user=request.user)
+    try:
+        profile = FitnessProfile.objects.get(user=request.user)
+    except FitnessProfile.DoesNotExist:
+        return redirect("More-About-You")
 
     today = timezone.localdate()
     last_week_start = today - timedelta(days=today.weekday() + 7)  # Last Monday
@@ -171,6 +176,11 @@ def uploadBarcode(request):
     return JsonResponse({"barcode": barcode})
 
 def searchFood(request):
+    profile = FitnessProfile.objects.get(user=request.user)
+
+    if not check_rate_limit(request.user.id, "search", profile.isPremium):
+        return JsonResponse({"error": "Search limit reached for today."}, status=429)
+
     query = request.GET.get("q", "").strip()
     if not query or len(query) < 2:
         return JsonResponse({"error": "Query too short"}, status=400)
@@ -262,10 +272,37 @@ def saveWeight(request):
     return None
 
 
+def check_rate_limit(user_id, action, is_premium):
+    #True = allowed
+    limits = {
+        "recipe": {"free": 2, "premium": 20},
+        "search": {"free": 30, "premium": 200},
+    }
+
+    tier = "premium" if is_premium else "free"
+    limit = limits[action][tier]
+
+    key = f"rl_{action}_{user_id}"
+    current = cache.get(key, 0)
+
+    if current >= limit:
+        return False
+
+    cache.set(key, current + 1, timeout=86400)  # resets every day
+    return True
+
+
 @csrf_exempt
 def aiRecipe(request):
     try:
         profile = FitnessProfile.objects.get(user=request.user)
+
+        if not check_rate_limit(request.user.id, "recipe", profile.isPremium):
+            limit = 20 if profile.isPremium else 2
+            return JsonResponse({
+                "error": f"Daily limit of {limit} recipes reached.",
+                "upgrade_needed": not profile.isPremium
+            }, status=429)
 
         # Get ingredients from pantry
         ingredients = list(profile.pantry.all().values_list('food__name', flat=True))

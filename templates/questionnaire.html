@@ -25,14 +25,33 @@
 
             <!-- Height -->
             <div class="question-card" data-required="true">
-                <h2>What is your height (cm)?</h2>
-                <input type="number" id="height" placeholder="Enter height">
+                <h2>What is your height?</h2>
+                <div class="unit-toggle">
+                    <button class="unit-btn active" id="heightCmBtn" onclick="setHeightUnit('cm')">cm</button>
+                    <button class="unit-btn" id="heightFtBtn" onclick="setHeightUnit('ft')">ft/in</button>
+                </div>
+                <div id="heightCmInput">
+                    <input type="number" id="height" placeholder="e.g. 175">
+                </div>
+                <div id="heightFtInput" style="display:none; gap:10px; justify-content:center;">
+                    <input type="number" id="heightFt" placeholder="ft" min="1" max="8" style="width:80px;">
+                    <input type="number" id="heightIn" placeholder="in" min="0" max="11" style="width:80px;">
+                </div>
             </div>
 
             <!-- Weight -->
             <div class="question-card" data-required="true">
-                <h2>What is your weight (kg)?</h2>
-                <input type="number" id="weight" placeholder="Enter weight">
+                <h2>What is your weight?</h2>
+                <div class="unit-toggle">
+                    <button class="unit-btn active" id="weightKgBtn" onclick="setWeightUnit('kg')">kg</button>
+                    <button class="unit-btn" id="weightLbBtn" onclick="setWeightUnit('lbs')">lbs</button>
+                </div>
+                <div id="weightKgInput">
+                    <input type="number" id="weight" placeholder="e.g. 70">
+                </div>
+                <div id="weightLbInput" style="display:none;">
+                    <input type="number" id="weightLbs" placeholder="e.g. 154">
+                </div>
             </div>
 
             <!-- Max lifts -->

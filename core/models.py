@@ -22,6 +22,7 @@ class FitnessProfile(models.Model):
     diet = models.CharField(max_length=40, blank=True)
     allergies = models.JSONField(default=dict, blank=True)
     maxes = models.JSONField(default=dict, blank=True)  # {"bench":80, ...}
+    isPremium = models.BooleanField(default=False)
 
     def __str__(self):
         return self.user.username

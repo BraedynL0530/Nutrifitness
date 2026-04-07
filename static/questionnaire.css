@@ -209,4 +209,36 @@ header h1 {
     from { opacity: 0; }
     to { opacity: 1; }
 }
+.unit-toggle {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 15px;
+}
 
+.unit-btn {
+    padding: 8px 20px;
+    background: #333;
+    border: 2px solid #5a4c72;
+    border-radius: 20px;
+    color: white;
+    cursor: pointer;
+    transition: all 0.2s;
+    width: auto;
+}
+
+.unit-btn.active {
+    background: #7b4b9f;
+    border-color: #a066c2;
+}
+
+#heightFtInput {
+    display: none;
+    gap: 10px;
+    justify-content: center;
+}
+
+#heightFtInput input,
+#weightLbInput input {
+    text-align: center;
+}

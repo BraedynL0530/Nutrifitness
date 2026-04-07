@@ -6,6 +6,8 @@ from dotenv import load_dotenv
 import joblib
 import uuid
 import time
+from .models import WeeklySummary
+
 def calcBmi(weightKg, heightCm):
     heightMeter = heightCm / 100.0
     bmi = weightKg / (heightMeter * heightMeter)
@@ -84,8 +86,11 @@ def searchFoods(query):
     params = {
         "search_terms": query,
         "json": 1,
-        "page_size": 6,
-        "fields": "product_name,brands,code,nutriments,allergens_tags,categories"
+        "page_size": 8,
+        "fields": "product_name,brands,code,nutriments,allergens_tags,categories",
+        "cc": "us",  # country code - US products first
+        "lc": "en",  # language - English only
+        "sort_by": "unique_scans_n"  # most scanned = most popular/relevant
     }
     headers = {
         "User-Agent": "Nutrifitness - Android - Version 1.0 - https://nutrifitness.com",
@@ -98,7 +103,7 @@ def searchFoods(query):
 
             if res.status_code == 503:
                 print(f"503 on attempt {attempt + 1}, retrying...")
-                time.sleep(1.5 * (attempt + 1))  # wait 1.5s, 3s, 4.5s
+                time.sleep(0.01)
                 continue
 
             if res.status_code != 200:
@@ -125,6 +130,90 @@ def searchFoods(query):
             return []
 
     print("All 3 attempts failed")
+    return searchUSDA(query)
+
+def searchUSDA(query):
+    api_key = os.getenv("USDA_API_KEY")
+    url = "https://api.nal.usda.gov/fdc/v1/foods/search"
+    params = {
+        "query": query,
+        "api_key": api_key,
+        "pageSize": 6,
+        "dataType": "Branded,SR Legacy"
+    }
+    try:
+        res = requests.get(url, params=params, timeout=8)
+        res.raise_for_status()
+        foods = res.json().get("foods", [])
+        results = []
+        for f in foods:
+            nutrients = {n["nutrientName"]: n["value"]
+                        for n in f.get("foodNutrients", [])}
+            results.append({
+                "name": f.get("description", "Unknown"),
+                "brand": f.get("brandOwner", ""),
+                "barcode": f.get("gtinUpc") or f"usda_{f.get('fdcId')}",
+                "category": f.get("foodCategory", ""),
+                "allergens": [],
+                "nutrients": {
+                    "calories_kcal": nutrients.get("Energy", 0),
+                    "proteins_g": nutrients.get("Protein", 0),
+                    "fat_g": nutrients.get("Total lipid (fat)", 0),
+                    "carbohydrates_g": nutrients.get(
+                        "Carbohydrate, by difference", 0
+                    ),
+                },
+                "micronutrients": {
+                    "calcium_mg": nutrients.get("Calcium, Ca", 0),
+                    "iron_mg": nutrients.get("Iron, Fe", 0),
+                    "potassium_mg": nutrients.get("Potassium, K", 0),
+                    "magnesium_mg": nutrients.get("Magnesium, Mg", 0),
+                    "vitamin-C_mg": nutrients.get(
+                        "Vitamin C, total ascorbic acid", 0
+                    ),
+                    "vitamin-D_mg": nutrients.get("Vitamin D (D2 + D3)", 0),
+                }
+            })
+        return results
+    except Exception as e:
+        print(f"USDA search error: {e}")
+        return []
+
+
+def searchOFF(query):
+    url = "https://world.openfoodfacts.org/api/v2/search"
+    params = {
+        "search_terms": query,
+        "json": 1,
+        "page_size": 6,
+        "fields": "product_name,brands,code,nutriments,allergens_tags,categories",
+        "cc": "us",
+        "lc": "en",
+        "sort_by": "unique_scans_n"
+    }
+    headers = {
+        "User-Agent": "Nutrifitness - Android - Version 1.0 - https://nutrifitness.com",
+        "Accept": "application/json"
+    }
+    for attempt in range(2):
+        try:
+            res = requests.get(url, params=params, headers=headers, timeout=8)
+            if res.status_code == 503:
+                time.sleep(1.5 * (attempt + 1))
+                continue
+            if res.status_code != 200 or not res.text.strip():
+                return []
+            products = res.json().get("products", [])
+            results = []
+            for p in products:
+                if p.get("product_name") and p.get("product_name", "").isascii():
+                    results.append(simplifyFoodData(
+                        p, p.get("code", f"search_{uuid.uuid4().hex[:8]}")
+                    ))
+            return results[:6]
+        except Exception as e:
+            print(f"OFF fallback error: {e}")
+            return []
     return []
 
 def simplifyFoodData(product,barcode):
@@ -196,32 +285,34 @@ def generateRecipe(ingredients, allergies, diet):
 
 
 def getWeightPrediction(profile):
-
+    model_path = os.path.join(
+        os.path.dirname(os.path.dirname(__file__)),
+        'weight_prediction_model.joblib'
+    )
     try:
-        model = joblib.load('weight_prediction_model.joblib')
+        model = joblib.load(model_path)
     except:
         return None
 
-    # Get most recent week's data
-    latest_summary = profile.weekly_summaries.first()
+    latest_summary = profile.weekly_summary.first()
 
     if not latest_summary:
-        # No data yet - need to create summaries first
         return None
 
     sex_encoded = 1 if profile.sex == 'male' else 0
+    current_weight = profile.get_latest_weight() or profile.weightKg or 70
 
     features = [
         latest_summary.avg_daily_calories,
         latest_summary.avg_daily_protein,
         sex_encoded,
         profile.tdee,
+        current_weight,  # added weight
     ]
 
-    # Predict
     try:
         prediction = model.predict([features])[0]
-        return prediction
+        return round(float(prediction), 2)
     except Exception as e:
         print(f"Prediction error: {e}")
         return None
