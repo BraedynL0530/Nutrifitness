@@ -83,7 +83,7 @@ def questionnaireData(request):
 @login_required(login_url='/login/')
 def dashboard(request):
     try:
-        profile = FitnessProfile.objects.get(user=request.user)
+        profile = FitnessProfile.objects.select_related('user').get(user=request.user)
     except FitnessProfile.DoesNotExist:
         return redirect("questionnaire")
 
@@ -228,7 +228,8 @@ def saveFood(request):
                 "micros":micronutrients
             })
 
-        DailyLog.objects.create(food=food, quantity=float(grams/100), profile=request.user.fitnessprofile)
+        profile = FitnessProfile.objects.select_related('user').get(user=request.user)
+        DailyLog.objects.create(food=food, quantity=float(grams / 100), profile=profile)
 
         print(f"✅ Saved: {name} - {grams}g (quantity={grams / 100})")
         return JsonResponse({
@@ -320,7 +321,7 @@ def aiRecipe(request):
             }, status=429)
 
         # Get ingredients from pantry
-        ingredients = list(profile.pantry.all().values_list('food__name', flat=True))
+        ingredients = list(profile.pantry.select_related('food').values_list('food__name', flat=True))
 
         # Check if pantry is empty
         if not ingredients:
