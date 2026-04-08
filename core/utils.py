@@ -133,7 +133,7 @@ def searchFoods(query):
     return searchUSDA(query)
 
 def searchUSDA(query):
-    api_key = os.getenv("USDA_API_KEY")
+    api_key = os.environ.get("USDA_API_KEY")
     url = "https://api.nal.usda.gov/fdc/v1/foods/search"
     params = {
         "query": query,
@@ -249,7 +249,7 @@ def generateFitnessPlan(x,y):
 
 
 load_dotenv()
-client = Cerebras(api_key=os.getenv("CEREBRAS_API_KEY"))
+client = Cerebras(api_key=os.environ.get("CEREBRAS_API_KEY"))
 
 
 def generateRecipe(ingredients, allergies, diet):
