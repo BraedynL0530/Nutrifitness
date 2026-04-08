@@ -271,9 +271,17 @@ def saveItem(request):
 @csrf_exempt
 def saveWeight(request):
     if request.method == 'POST':
-        profile = FitnessProfile.objects.get(user=request.user)
         data = json.loads(request.body)
         weight = data.get('weight')
+        try:
+            weight = float(weight)
+        except (TypeError, ValueError):
+            return JsonResponse({'error': 'Invalid weight'}, status=400)
+
+        if weight <= 0 or weight > 500:
+            return JsonResponse({'error': 'Invalid weight'}, status=400)
+
+        profile = FitnessProfile.objects.get(user=request.user)
         profile.update_weight(weight)
         return JsonResponse({'status': 'success'})
     return None

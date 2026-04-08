@@ -21,12 +21,12 @@ class AuthTests(TestCase):
         self.assertEqual(User.objects.filter(username='newuser').count(), 1)
 
     def test_dashboard_requires_login(self):
-        res = self.client.get('/dashboard')
-        self.assertRedirects(res, '/login/?next=/dashboard')
+        res = self.client.get('')
+        self.assertRedirects(res, '/login/?next=/')
 
     def test_dashboard_no_profile_redirects(self):
         self.client.login(username='testuser', password='testpass123')
-        res = self.client.get('/dashboard')
+        res = self.client.get('')
         self.assertRedirects(res, '/More-About-You')
 
 
