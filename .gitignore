@@ -1,1 +1,5 @@
 /core/migrations/
+__pycache__/
+*.pyc
+*.pyo
+staticfiles/
