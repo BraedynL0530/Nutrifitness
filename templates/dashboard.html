@@ -10,6 +10,7 @@
   <link rel="apple-touch-icon" href="{% static 'icons/icon-192.png' %}">
   <title>Dashboard — NutriFitness</title>
   <link rel="stylesheet" href="{% static 'charts.css' %}">
+  <link rel="stylesheet" href="{% static 'navbar.css' %}">
   {% if GOOGLE_ANALYTICS_ID %}
   <!-- Google Analytics -->
   <script async src="https://www.googletagmanager.com/gtag/js?id={{ GOOGLE_ANALYTICS_ID }}"></script>
@@ -222,6 +223,7 @@
   {{ foodsData|json_script:"foods-data" }}
 
   <script src="{% static 'charts.js' %}"></script>
+  <script src="{% static 'navbar.js' %}"></script>
   <script>
     // PWA service worker registration
     if ('serviceWorker' in navigator) {

@@ -10,6 +10,7 @@
   <link rel="apple-touch-icon" href="{% static 'icons/icon-192.png' %}">
   <title>My Pantry — NutriFitness</title>
   <link rel="stylesheet" href="{% static 'pantry.css' %}">
+  <link rel="stylesheet" href="{% static 'navbar.css' %}">
   {% if GOOGLE_ANALYTICS_ID %}
   <!-- Google Analytics -->
   <script async src="https://www.googletagmanager.com/gtag/js?id={{ GOOGLE_ANALYTICS_ID }}"></script>
@@ -62,6 +63,7 @@
   </script>
 
   <script src="{% static 'pantry.js' %}"></script>
+  <script src="{% static 'navbar.js' %}"></script>
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/static/service-worker.js');
