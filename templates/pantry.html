@@ -4,12 +4,27 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>My Pantry</title>
+  <meta name="description" content="Manage your pantry and generate AI recipes with NutriFitness.">
+  <meta name="theme-color" content="#9b59b6">
+  <link rel="manifest" href="{% static 'manifest.json' %}">
+  <link rel="apple-touch-icon" href="{% static 'icons/icon-192.png' %}">
+  <title>My Pantry — NutriFitness</title>
   <link rel="stylesheet" href="{% static 'pantry.css' %}">
+  <link rel="stylesheet" href="{% static 'navbar.css' %}">
+  {% if GOOGLE_ANALYTICS_ID %}
+  <!-- Google Analytics -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id={{ GOOGLE_ANALYTICS_ID }}"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', '{{ GOOGLE_ANALYTICS_ID }}');
+  </script>
+  {% endif %}
 </head>
 <body>
 
-  <a href="/" class="back-button">← Dashboard</a>
+  {% include 'navbar.html' %}
 
   <div class="pantry-container">
     <h1>My Pantry</h1>
@@ -48,5 +63,16 @@
   </script>
 
   <script src="{% static 'pantry.js' %}"></script>
+  <script src="{% static 'navbar.js' %}"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/static/service-worker.js');
+    }
+    {% if GOOGLE_ANALYTICS_ID %}
+    document.addEventListener('recipeGenerated', function() {
+      gtag('event', 'recipe_generated', { event_category: 'ai' });
+    });
+    {% endif %}
+  </script>
 </body>
 </html>

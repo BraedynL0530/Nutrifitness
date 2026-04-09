@@ -1,0 +1,122 @@
+.navbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  background: linear-gradient(135deg, #1a0825, #2a1035);
+  border-bottom: 2px solid #8e44ad;
+  padding: 12px 20px;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  box-shadow: 0 2px 12px rgba(142, 68, 173, 0.3);
+}
+
+.navbar-brand {
+  color: #b084f7;
+  font-size: 20px;
+  font-weight: 700;
+  text-decoration: none;
+  letter-spacing: 0.5px;
+}
+
+.navbar-brand:hover {
+  color: #d8b4ff;
+}
+
+.navbar-links {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.navbar-links li a {
+  color: #d8b4ff;
+  text-decoration: none;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background 0.2s, color 0.2s;
+}
+
+.navbar-links li a:hover,
+.navbar-links li a.active {
+  background: rgba(155, 89, 182, 0.25);
+  color: #fff;
+}
+
+.navbar-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.navbar-username {
+  color: #bca3f5;
+  font-size: 13px;
+}
+
+.navbar-logout {
+  background: rgba(155, 89, 182, 0.2);
+  border: 1px solid #8e44ad;
+  border-radius: 8px;
+  color: #d8b4ff;
+  font-size: 13px;
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.navbar-logout:hover {
+  background: #8e44ad;
+  color: #fff;
+}
+
+.navbar-toggle {
+  display: none;
+  background: none;
+  border: 1px solid #8e44ad;
+  border-radius: 6px;
+  color: #d8b4ff;
+  font-size: 18px;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+
+@media (max-width: 600px) {
+  .navbar-toggle {
+    display: block;
+  }
+
+  .navbar-links {
+    display: none;
+    flex-direction: column;
+    width: 100%;
+    padding: 10px 0 4px;
+    gap: 2px;
+  }
+
+  .navbar-links.open {
+    display: flex;
+  }
+
+  .navbar-links li {
+    width: 100%;
+  }
+
+  .navbar-links li a {
+    display: block;
+    width: 100%;
+  }
+
+  .navbar-user {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 6px 14px;
+    gap: 6px;
+  }
+}

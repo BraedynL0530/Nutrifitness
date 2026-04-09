@@ -4,15 +4,28 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Nutrition Dashboard</title>
+  <meta name="description" content="Track your daily nutrition, macros, and weight with NutriFitness.">
+  <meta name="theme-color" content="#9b59b6">
+  <link rel="manifest" href="{% static 'manifest.json' %}">
+  <link rel="apple-touch-icon" href="{% static 'icons/icon-192.png' %}">
+  <title>Dashboard — NutriFitness</title>
   <link rel="stylesheet" href="{% static 'charts.css' %}">
+  <link rel="stylesheet" href="{% static 'navbar.css' %}">
+  {% if GOOGLE_ANALYTICS_ID %}
+  <!-- Google Analytics -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id={{ GOOGLE_ANALYTICS_ID }}"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', '{{ GOOGLE_ANALYTICS_ID }}');
+  </script>
+  {% endif %}
 </head>
 <body>
 
-  <a href="/pantry" class="pantry-button">My Pantry</a>
-  <div class="user-info">
-      Welcome, {{ user.username }} <!-- Test if user is connected or not.  -->
-  </div>
+  {% include 'navbar.html' %}
+
     <!-- Tab Navigation -->
   <div class="tab-container">
     <button class="tab-btn active" data-tab="food">Food Tracking</button>
@@ -210,5 +223,22 @@
   {{ foodsData|json_script:"foods-data" }}
 
   <script src="{% static 'charts.js' %}"></script>
+  <script src="{% static 'navbar.js' %}"></script>
+  <script>
+    // PWA service worker registration
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/static/service-worker.js');
+    }
+    {% if GOOGLE_ANALYTICS_ID %}
+    // Track food log events
+    document.addEventListener('foodLogged', function(e) {
+      gtag('event', 'food_logged', { event_category: 'tracking', event_label: e.detail && e.detail.name });
+    });
+    // Track weight log events
+    document.addEventListener('weightLogged', function() {
+      gtag('event', 'weight_logged', { event_category: 'tracking' });
+    });
+    {% endif %}
+  </script>
 </body>
 </html>
