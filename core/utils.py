@@ -7,7 +7,7 @@ import joblib
 import uuid
 import time
 from .models import WeeklySummary
-
+load_dotenv()
 def calcBmi(weightKg, heightCm):
     heightMeter = heightCm / 100.0
     bmi = weightKg / (heightMeter * heightMeter)
@@ -141,6 +141,7 @@ def searchUSDA(query):
         "pageSize": 6,
         "dataType": "Branded,SR Legacy"
     }
+
     try:
         res = requests.get(url, params=params, timeout=8)
         res.raise_for_status()
@@ -179,42 +180,6 @@ def searchUSDA(query):
         print(f"USDA search error: {e}")
         return []
 
-
-def searchOFF(query):
-    url = "https://world.openfoodfacts.org/api/v2/search"
-    params = {
-        "search_terms": query,
-        "json": 1,
-        "page_size": 6,
-        "fields": "product_name,brands,code,nutriments,allergens_tags,categories",
-        "cc": "us",
-        "lc": "en",
-        "sort_by": "unique_scans_n"
-    }
-    headers = {
-        "User-Agent": "Nutrifitness - Android - Version 1.0 - https://nutrifitness.com",
-        "Accept": "application/json"
-    }
-    for attempt in range(2):
-        try:
-            res = requests.get(url, params=params, headers=headers, timeout=8)
-            if res.status_code == 503:
-                time.sleep(1.5 * (attempt + 1))
-                continue
-            if res.status_code != 200 or not res.text.strip():
-                return []
-            products = res.json().get("products", [])
-            results = []
-            for p in products:
-                if p.get("product_name") and p.get("product_name", "").isascii():
-                    results.append(simplifyFoodData(
-                        p, p.get("code", f"search_{uuid.uuid4().hex[:8]}")
-                    ))
-            return results[:6]
-        except Exception as e:
-            print(f"OFF fallback error: {e}")
-            return []
-    return []
 
 def simplifyFoodData(product,barcode):
     print("SIMPLIFIED FOOD DATA:")

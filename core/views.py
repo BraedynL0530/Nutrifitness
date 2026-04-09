@@ -189,7 +189,7 @@ def searchFood(request):
     query = request.GET.get("q", "").strip()
     if not query or len(query) < 2:
         return JsonResponse({"error": "Query too short"}, status=400)
-    results = utils.searchFoods(query)
+    results = utils.searchUSDA(query)
     return JsonResponse({"results": results})
 
 @csrf_exempt

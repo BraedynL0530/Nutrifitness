@@ -158,7 +158,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const wWidth = weightCanvas.width;
     const wHeight = weightCanvas.height;
     const padding = 40;
-    const weights = weightData.history.map(w => w.weight);
+    const weights = weightData.history.map(w => w.weight).reverse();
+    const dates = weightData.history.map(w => w.date).reverse();
 
     if (weights.length === 1) {
       weightCtx.fillStyle = "#b084f7";
@@ -206,8 +207,56 @@ document.addEventListener("DOMContentLoaded", () => {
       weightCtx.textAlign = "right";
       weightCtx.fillText(`${maxWeight.toFixed(0)}kg`, padding - 5, padding + 5);
       weightCtx.fillText(`${minWeight.toFixed(0)}kg`, padding - 5, wHeight - padding + 5);
+
+      const tooltip = document.createElement("div");
+      tooltip.style.cssText = `
+          position: absolute; background: rgba(26,8,37,0.95);
+          border: 1px solid #8e44ad; border-radius: 8px;
+          padding: 6px 12px; color: #d8b4ff; font-size: 13px;
+          pointer-events: none; display: none; z-index: 10;
+          font-family: 'Poppins', sans-serif;
+      `;
+      document.body.appendChild(tooltip);
+
+      const dotPositions = weights.map((weight, i) => ({
+          x: padding + ((wWidth - 2 * padding) / (weights.length - 1)) * i,
+          y: wHeight - padding - ((weight - minWeight) / range) * (wHeight - 2 * padding),
+          weight,
+          date: dates[i]
+      }));
+
+      weightCanvas.addEventListener("mousemove", (e) => {
+          const rect = weightCanvas.getBoundingClientRect();
+          const mouseX = e.clientX - rect.left;
+          const mouseY = e.clientY - rect.top;
+
+          // Scale for canvas vs display size
+          const scaleX = wWidth / rect.width;
+          const scaleY = wHeight / rect.height;
+          const canvasX = mouseX * scaleX;
+          const canvasY = mouseY * scaleY;
+
+          let found = false;
+          for (const dot of dotPositions) {
+              const dist = Math.sqrt((canvasX - dot.x) ** 2 + (canvasY - dot.y) ** 2);
+              if (dist < 12) {
+                  tooltip.style.display = "block";
+                  tooltip.style.left = `${e.clientX + 12}px`;
+                  tooltip.style.top = `${e.clientY - 10}px`;
+                  tooltip.innerHTML = `<strong>${dot.weight}kg</strong><br><span style="color:#9b7acf;font-size:11px;">${dot.date}</span>`;
+                  found = true;
+                  break;
+              }
+          }
+          if (!found) tooltip.style.display = "none";
+      });
+
+      weightCanvas.addEventListener("mouseleave", () => {
+          tooltip.style.display = "none";
+      });
     }
-  } // <-- THIS was the missing brace
+  }
+
 
   // ---------- Overlays ----------
   const macroOverlay = document.getElementById("macroOverlay");
