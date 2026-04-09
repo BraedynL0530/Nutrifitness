@@ -3,8 +3,23 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Set up your NutriFitness profile to get personalized nutrition goals.">
+    <meta name="theme-color" content="#9b59b6">
+    <link rel="manifest" href="{% static 'manifest.json' %}">
+    <link rel="apple-touch-icon" href="{% static 'icons/icon-192.png' %}">
     <title>NutriFitness Questionnaire</title>
     <link rel="stylesheet" href="{% static 'questionnaire.css' %}">
+    {% if GOOGLE_ANALYTICS_ID %}
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id={{ GOOGLE_ANALYTICS_ID }}"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', '{{ GOOGLE_ANALYTICS_ID }}');
+    </script>
+    {% endif %}
 </head>
 <body>
     <header>
@@ -124,5 +139,15 @@
     </footer>
 
     <script src="{% static 'questionnaire.js' %}"></script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/static/service-worker.js');
+      }
+      {% if GOOGLE_ANALYTICS_ID %}
+      document.addEventListener('profileCompleted', function() {
+        gtag('event', 'profile_completed', { event_category: 'onboarding' });
+      });
+      {% endif %}
+    </script>
 </body>
 </html>

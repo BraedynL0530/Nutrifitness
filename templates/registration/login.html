@@ -1,10 +1,25 @@
 <!-- templates/login.html -->
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Log in to NutriFitness and track your nutrition goals.">
+    <meta name="theme-color" content="#9b59b6">
+    <link rel="manifest" href="{% static 'manifest.json' %}">
+    <link rel="apple-touch-icon" href="{% static 'icons/icon-192.png' %}">
     <title>Login - Nutrifitness</title>
+    {% if GOOGLE_ANALYTICS_ID %}
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id={{ GOOGLE_ANALYTICS_ID }}"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', '{{ GOOGLE_ANALYTICS_ID }}');
+    </script>
+    {% endif %}
     <style>
         * {
             margin: 0;
@@ -132,5 +147,15 @@
             </p>
         </form>
     </div>
+    <script>
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/static/service-worker.js');
+      }
+      {% if GOOGLE_ANALYTICS_ID %}
+      document.querySelector('form').addEventListener('submit', function() {
+        gtag('event', 'login', { method: 'form' });
+      });
+      {% endif %}
+    </script>
 </body>
 </html>

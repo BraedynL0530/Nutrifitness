@@ -1,0 +1,33 @@
+{% load static %}
+<nav class="navbar">
+  <a class="navbar-brand" href="/">💪 NutriFitness</a>
+  <button class="navbar-toggle" id="navbarToggle" aria-label="Toggle navigation">☰</button>
+  <ul class="navbar-links" id="navbarLinks">
+    <li><a href="/" {% if request.path == '/' %}class="active"{% endif %}>Dashboard</a></li>
+    <li><a href="/pantry" {% if request.path == '/pantry' %}class="active"{% endif %}>Pantry</a></li>
+    {% if user.is_authenticated %}
+    <li class="navbar-user">
+      <span class="navbar-username">{{ user.username }}</span>
+      <form method="post" action="{% url 'logout' %}" style="display:inline;">
+        {% csrf_token %}
+        <button type="submit" class="navbar-logout">Logout</button>
+      </form>
+    </li>
+    {% else %}
+    <li><a href="{% url 'login' %}">Login</a></li>
+    <li><a href="{% url 'register' %}">Register</a></li>
+    {% endif %}
+  </ul>
+</nav>
+<link rel="stylesheet" href="{% static 'navbar.css' %}">
+<script>
+  (function() {
+    var toggle = document.getElementById('navbarToggle');
+    var links = document.getElementById('navbarLinks');
+    if (toggle && links) {
+      toggle.addEventListener('click', function() {
+        links.classList.toggle('open');
+      });
+    }
+  })();
+</script>
