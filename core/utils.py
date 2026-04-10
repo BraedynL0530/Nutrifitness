@@ -208,18 +208,17 @@ def simplifyFoodData(product,barcode):
         },
         "ecoscore_grade": product.get("ecoscore_grade", "Unknown")
     }
-#barcode scanner is functional
+#later feature
 def generateFitnessPlan(x,y):
     return
-
-
-load_dotenv()
-client = Cerebras(api_key=os.environ.get("CEREBRAS_API_KEY"))
-
 
 def generateRecipe(ingredients, allergies, diet):
     if not ingredients:
         return None
+    api_key = os.environ.get("CEREBRAS_API_KEY")
+    if not api_key:
+        return None
+    client = Cerebras(api_key=api_key)
 
     prompt = (
         f"You are a nutrition assistant. Create a healthy recipe with detailed instructions using{', '.join(ingredients)}, "
