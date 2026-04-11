@@ -30,7 +30,7 @@ def register(request):
 def questionnaire(request):
     try:
         profile = FitnessProfile.objects.get(user=request.user)
-        return redirect("")
+        return redirect("dashboard")
     except FitnessProfile.DoesNotExist:
         return render(request, 'questionnaire.html')
 
@@ -148,7 +148,7 @@ def dashboard(request):
 @login_required(login_url='/login/')
 def myPantry(request):
     profile = FitnessProfile.objects.get(user=request.user)
-    pantry_items = profile.pantry.select_related('food').all()
+    pantry_items = profile.pantry.prefetch_related('food').all()
 
     # Convert QuerySet to list of dicts
     pantry_data = []
