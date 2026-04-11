@@ -140,7 +140,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 });
                 const result = await res.json();
                 console.log("Submitted:", result);
-                window.location.href = "dashboard"; //redirect
+                window.location.href = "/"; //redirect
             } catch (err) {
                 console.error(err);
             }
