@@ -17,13 +17,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
+RUN python manage.py collectstatic --noinput
+
 EXPOSE 8000
 
-CMD ["sh", "-c", "\
-  echo '=== Starting migrations ===' && \
-  python manage.py migrate 2>&1 && \
-  echo '=== Collecting static files ===' && \
-  python manage.py collectstatic --noinput 2>&1 && \
-  echo '=== Starting gunicorn ===' && \
-  gunicorn --bind 0.0.0.0:8000 --workers 1 --timeout 120 --log-level debug Nutrifitness.wsgi:application 2>&1 \
-"]
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "1", "--timeout", "120", "--log-level", "debug", "Nutrifitness.wsgi:application"]
