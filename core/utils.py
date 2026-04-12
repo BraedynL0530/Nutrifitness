@@ -224,8 +224,10 @@ def generateRecipe(ingredients, allergies, diet):
         f"You are a nutrition assistant. Create a healthy recipe with detailed instructions using {', '.join(ingredients)}, "
         f"dietary preferences: {', '.join(diet) if diet else 'none'}, "
         f"avoid allergens: {', '.join(allergies) if allergies else 'none'}. "
-        f"Dont use any other ingredients than those specified or common seasonings, you dont have to include all ingredients."
-        f"Include calories, macros, and micronutrients in structured JSON format.")
+        f"Don't use any other ingredients than those specified or common seasonings, you dont have to include all ingredients. "
+        f"At the very end of your response, include EXACTLY this JSON block on its own line:\n"
+        f'```json\n{{"recipe_name": "<recipe name>", "calories": <total calories as number>, "protein": <total protein grams as number>, "carbs": <total carbs grams as number>, "fat": <total fat grams as number>}}\n```'
+    )
     stream = client.chat.completions.create(
         model="llama3.1-8b", # Dudes changed the model since i last added this i was wondering the issue may experiment with models
         messages=[
@@ -246,6 +248,62 @@ def generateRecipe(ingredients, allergies, diet):
             result_text += delta
 
     return result_text
+
+
+def extractNutrients(recipe_text):
+    """Extract recipe name and nutrients from AI-generated recipe text."""
+    import re
+    import json
+
+    result = {
+        "recipe_name": "AI Generated Recipe",
+        "calories": 0,
+        "protein": 0,
+        "carbs": 0,
+        "fat": 0,
+    }
+
+    # Try to find a JSON code block in the text
+    json_block = re.search(r'```json\s*(\{.*?\})\s*```', recipe_text, re.DOTALL | re.IGNORECASE)
+    if json_block:
+        try:
+            data = json.loads(json_block.group(1))
+            result["recipe_name"] = data.get("recipe_name", result["recipe_name"])
+            result["calories"] = float(data.get("calories", 0) or 0)
+            result["protein"] = float(data.get("protein", 0) or 0)
+            result["carbs"] = float(data.get("carbs", 0) or 0)
+            result["fat"] = float(data.get("fat", 0) or 0)
+            return result
+        except (json.JSONDecodeError, ValueError):
+            pass
+
+    # Fallback: use regex to find common nutrient patterns
+    cal_match = re.search(r'calories[:\s]+(\d+(?:\.\d+)?)\s*(?:kcal|cal)?', recipe_text, re.IGNORECASE)
+    if cal_match:
+        result["calories"] = float(cal_match.group(1))
+
+    prot_match = re.search(r'protein[:\s]+(\d+(?:\.\d+)?)\s*g', recipe_text, re.IGNORECASE)
+    if prot_match:
+        result["protein"] = float(prot_match.group(1))
+
+    carb_match = re.search(r'carb(?:ohydrate)?s?[:\s]+(\d+(?:\.\d+)?)\s*g', recipe_text, re.IGNORECASE)
+    if carb_match:
+        result["carbs"] = float(carb_match.group(1))
+
+    fat_match = re.search(r'\bfat[:\s]+(\d+(?:\.\d+)?)\s*g', recipe_text, re.IGNORECASE)
+    if fat_match:
+        result["fat"] = float(fat_match.group(1))
+
+    # Try to extract recipe name from the first markdown heading or bold title
+    name_match = re.search(r'(?:^|\n)#\s+(.+)', recipe_text)
+    if name_match:
+        result["recipe_name"] = name_match.group(1).strip()
+    else:
+        bold_match = re.search(r'(?:^|\n)\*\*(.+?)\*\*', recipe_text)
+        if bold_match:
+            result["recipe_name"] = bold_match.group(1).strip()
+
+    return result
 
 
 def getWeightPrediction(profile):

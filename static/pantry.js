@@ -173,12 +173,60 @@ document.addEventListener("DOMContentLoaded", () => {
       const data = await response.json();
       console.log("Recipe data:", data);
 
-      // Display recipe
+      const nutrients = data.nutrients || {};
+      const recipeName = nutrients.recipe_name || "AI Generated Recipe";
+
+      // Display recipe with nutrition summary and log button
       resultDiv.innerHTML = `
         <div style="text-align: left; color: #d8b4ff; line-height: 1.6;">
           <pre style="white-space: pre-wrap; font-family: inherit;">${data.recipe}</pre>
+          <div style="margin-top: 16px; padding: 14px; background: rgba(155,89,182,0.15); border-radius: 10px; border: 1px solid #9b59b6;">
+            <h4 style="color: #d8b4ff; margin: 0 0 10px 0;">📊 Nutrition Summary</h4>
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; font-size: 14px;">
+              <span>🔥 Calories: <strong>${nutrients.calories || 0} kcal</strong></span>
+              <span>💪 Protein: <strong>${nutrients.protein || 0}g</strong></span>
+              <span>🌾 Carbs: <strong>${nutrients.carbs || 0}g</strong></span>
+              <span>🥑 Fat: <strong>${nutrients.fat || 0}g</strong></span>
+            </div>
+            <button id="logRecipeBtn" style="margin-top: 12px; padding: 10px 20px; background: linear-gradient(135deg, #27ae60, #2ecc71); border: none; border-radius: 8px; color: white; font-size: 14px; font-weight: 600; cursor: pointer; width: 100%;">
+              🍽️ Log Meal?
+            </button>
+          </div>
         </div>
       `;
+
+      document.getElementById("logRecipeBtn").addEventListener("click", async () => {
+        const payload = {
+          barcode: `recipe_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+          name: recipeName,
+          grams: 100, // quantity = grams/100 = 1 serving; nutrients represent the full recipe
+          nutrients: {
+            calories_kcal: nutrients.calories || 0,
+            proteins_g: nutrients.protein || 0,
+            carbohydrates_g: nutrients.carbs || 0,
+            fat_g: nutrients.fat || 0,
+          },
+          micronutrients: {},
+          category: "AI Recipe",
+          allergens: []
+        };
+
+        try {
+          const res = await fetch("/api/food-log/", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          if (res.ok) {
+            alert(`${recipeName} logged to your food diary!`);
+          } else {
+            const err = await res.json();
+            alert(err.error || "Failed to log meal.");
+          }
+        } catch (e) {
+          alert("Network error. Try again.");
+        }
+      });
 
       generateBtn.textContent = "Generate Another Recipe";
       generateBtn.disabled = false;
