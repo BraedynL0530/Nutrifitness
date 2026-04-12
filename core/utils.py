@@ -64,8 +64,11 @@ def barcodeScanner(frame):
 
 def readFoodData(barcode):
     url = f"https://world.openfoodfacts.org/api/v2/product/{barcode}.json"
+    headers = {
+        "User-Agent": "Nutrifitness - Mobile App - Version 1.0"
+    }
     try:
-        res = requests.get(url, timeout=5)  # <- add timeout here
+        res = requests.get(url, headers=headers, timeout=5)
         res.raise_for_status()
         data = res.json()
         if 'product' in data:
