@@ -348,7 +348,8 @@ def aiRecipe(request):
                 "error": "Failed to generate recipe. Try again."
             }, status=500)
 
-        return JsonResponse({"recipe": recipe})
+        nutrients = utils.extractNutrients(recipe)
+        return JsonResponse({"recipe": recipe, "nutrients": nutrients})
 
     except FitnessProfile.DoesNotExist:
         return JsonResponse({"error": "Profile not found"}, status=404)
