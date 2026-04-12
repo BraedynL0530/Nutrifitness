@@ -224,13 +224,14 @@ def generateRecipe(ingredients, allergies, diet):
     client = Cerebras(api_key=api_key)
 
     prompt = (
-        f"You are a nutrition assistant. Create a healthy recipe with detailed instructions using {', '.join(ingredients)}, "
-        f"dietary preferences: {', '.join(diet) if diet else 'none'}, "
-        f"avoid allergens: {', '.join(allergies) if allergies else 'none'}. "
-        f"Don't use any other ingredients than those specified or common seasonings, you dont have to include all ingredients. "
-        f"At the very end of your response, include EXACTLY this JSON block on its own line:\n"
-        f'```json\n{{"recipe_name": "<recipe name>", "calories": <total calories as number>, "protein": <total protein grams as number>, "carbs": <total carbs grams as number>, "fat": <total fat grams as number>}}\n```'
+        f"You are a nutrition assistant. Create a healthy recipe with detailed instructions using ONLY these ingredients: {', '.join(ingredients)}. "
+        f"You MUST use only items from this list. Do not add salmon, chicken, meat, or any other protein not listed. "
+        f"Dietary preferences: {', '.join(diet) if diet else 'none'}. "
+        f"Avoid allergens: {', '.join(allergies) if allergies else 'none'}. "
+        f"Create a recipe using ONLY the ingredients provided. "
+        f"End with this JSON: {{\"recipe_name\": \"NAME\", \"calories\": NUMBER, \"protein\": NUMBER, \"carbs\": NUMBER, \"fat\": NUMBER}}"
     )
+    
     stream = client.chat.completions.create(
         model="llama3.1-8b", # Dudes changed the model since i last added this i was wondering the issue may experiment with models
         messages=[
