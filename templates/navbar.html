@@ -1,10 +1,8 @@
 {% load static %}
 <nav class="navbar">
   <a class="navbar-brand" href="/">NutriFitness</a>
-  <button class="navbar-toggle" id="navbarToggle" aria-label="Toggle navigation">☰</button>
+  <button class="navbar-toggle" id="navbarToggle" aria-label="Toggle navigation">&#9776;</button>
   <ul class="navbar-links" id="navbarLinks">
-    <li><a href="/" {% if request.path == '/' %}class="active"{% endif %}>Dashboard</a></li>
-    <li><a href="/pantry" {% if request.path == '/pantry' %}class="active"{% endif %}>Pantry</a></li>
     {% if user.is_authenticated %}
     <li class="navbar-user">
       <span class="navbar-username">{{ user.username }}</span>
@@ -18,4 +16,20 @@
     <li><a href="{% url 'register' %}">Register</a></li>
     {% endif %}
   </ul>
+</nav>
+
+<!-- Bottom Navigation -->
+<nav class="bottom-nav" aria-label="Main navigation">
+  <a href="/" class="bottom-nav-item {% if request.path == '/' %}active{% endif %}">
+    <span class="bottom-nav-icon">&#8962;</span>
+    <span class="bottom-nav-label">Dashboard</span>
+  </a>
+  <button class="bottom-nav-item bottom-nav-add" id="bottomNavAdd" aria-label="Add food">
+    <span class="bottom-nav-icon add-icon">+</span>
+    <span class="bottom-nav-label">Add</span>
+  </button>
+  <a href="/pantry" class="bottom-nav-item {% if request.path == '/pantry' %}active{% endif %}">
+    <span class="bottom-nav-icon">&#9776;</span>
+    <span class="bottom-nav-label">Pantry</span>
+  </a>
 </nav>

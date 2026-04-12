@@ -3,16 +3,18 @@ document.addEventListener("DOMContentLoaded", () => {
   loadPantryItems();
 
   // Elements
-  const scanButton = document.getElementById("scanButton");
   const scanOverlay = document.getElementById("scanOverlay");
   const video = document.getElementById("camera");
   const captureBtn = document.getElementById("captureBtn");
   const scanResult = document.getElementById("scanResult");
 
-  // Open scanner overlay
-  scanButton.addEventListener("click", () => {
-    scanOverlay.classList.add("show");
-  });
+  // Bottom nav + button opens scanner overlay
+  const bottomNavAdd = document.getElementById("bottomNavAdd");
+  if (bottomNavAdd) {
+    bottomNavAdd.addEventListener("click", () => {
+      scanOverlay.classList.add("show");
+    });
+  }
 
   // Close overlay when clicking outside
   scanOverlay.addEventListener("click", (e) => {

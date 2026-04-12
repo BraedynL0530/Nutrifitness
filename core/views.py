@@ -80,8 +80,26 @@ def questionnaireData(request):
         WeightLog.objects.create(profile=profile, weight=weight)
         return JsonResponse({'status': 'success'})
 
-@login_required(login_url='/login/')
 def dashboard(request):
+    if not request.user.is_authenticated:
+        # Guest mode – serve empty data; food logs will be stored in localStorage
+        guest_data = {
+            "macros": {"Protein": 0, "Carbs": 0, "Fat": 0},
+            "micros": {
+                "calcium_mg": 0, "iron_mg": 0, "potassium_mg": 0,
+                "magnesium_mg": 0, "vitamin-C_mg": 0, "vitamin-D_mg": 0,
+            },
+            "goal_calories": 2000,
+            "eaten_calories": 0,
+        }
+        return render(request, 'dashboard.html', {
+            "data": guest_data,
+            "foodsData": [],
+            "weightData": {"current_weight": None, "prediction": None, "history": []},
+            "user": request.user,
+            "is_guest": True,
+        })
+
     try:
         profile = FitnessProfile.objects.select_related('user').get(user=request.user)
     except FitnessProfile.DoesNotExist:
@@ -141,12 +159,18 @@ def dashboard(request):
         "data": data,
         "foodsData": foodsData,
         "weightData": weightData,       # Removed redundant json data template does it for me
-        "user":request.user,
+        "user": request.user,
+        "is_guest": False,
     })
 
 
-@login_required(login_url='/login/')
 def myPantry(request):
+    if not request.user.is_authenticated:
+        return render(request, 'pantry.html', {
+            'pantry_data': '[]',
+            'is_guest': True,
+        })
+
     profile = FitnessProfile.objects.get(user=request.user)
     pantry_items = profile.pantry.prefetch_related('food').all()
 
@@ -161,7 +185,8 @@ def myPantry(request):
         })
 
     return render(request, 'pantry.html', {
-        'pantry_data': json.dumps(pantry_data)
+        'pantry_data': json.dumps(pantry_data),
+        'is_guest': False,
     })
 
 @csrf_exempt

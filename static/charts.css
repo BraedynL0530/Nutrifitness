@@ -7,10 +7,10 @@ body {
   margin: 0;
   display: flex;
   flex-direction: column;
-  justify-content: center;
   align-items: center;
   min-height: 100vh;
   padding: 20px;
+  padding-bottom: calc(var(--bottom-nav-height, 64px) + 20px); /* leave room for bottom nav */
 }
 
 /* Tab Navigation */
@@ -595,4 +595,22 @@ body {
   .weight-dashboard {
     max-width: 100%;
   }
+}
+/* Guest mode banner */
+.guest-banner {
+  background: rgba(155, 89, 182, 0.18);
+  border: 1px solid rgba(142, 68, 173, 0.4);
+  border-radius: 10px;
+  padding: 10px 16px;
+  margin: 12px auto 0;
+  max-width: 400px;
+  width: 100%;
+  text-align: center;
+  font-size: 13px;
+  color: #c9b3e8;
+}
+
+.guest-banner a {
+  color: #b084f7;
+  text-decoration: underline;
 }
