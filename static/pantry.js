@@ -13,6 +13,7 @@ document.addEventListener("DOMContentLoaded", () => {
   if (bottomNavAdd) {
     bottomNavAdd.addEventListener("click", () => {
       scanOverlay.classList.add("show");
+      startCamera();
     });
   }
 
@@ -20,23 +21,94 @@ document.addEventListener("DOMContentLoaded", () => {
   scanOverlay.addEventListener("click", (e) => {
     if (e.target === scanOverlay) {
       scanOverlay.classList.remove("show");
+      stopCamera();
     }
   });
 
-  // Start webcam
-  if (navigator.mediaDevices.getUserMedia) {
-    navigator.mediaDevices.getUserMedia({ video: true })
-      .then(stream => {
-        video.srcObject = stream;
-      })
-      .catch(err => {
-        console.error("Camera access denied:", err);
-        scanResult.textContent = "Camera not available.";
-      });
+  function startCamera() {
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      navigator.mediaDevices.getUserMedia({ video: true })
+        .then(stream => { video.srcObject = stream; })
+        .catch(err => {
+          console.error("Camera access denied:", err);
+          if (scanResult) scanResult.textContent = "Camera not available.";
+        });
+    }
   }
 
+  function stopCamera() {
+    if (video && video.srcObject) {
+      video.srcObject.getTracks().forEach(t => t.stop());
+      video.srcObject = null;
+    }
+  }
+
+  // Mode tabs (scan / search)
+  function setPantryMode(mode) {
+    const scanArea = document.getElementById("pantryScanArea");
+    const searchArea = document.getElementById("pantrySearchArea");
+    const btnScan = document.getElementById("pantryBtnScan");
+    const btnSearch = document.getElementById("pantryBtnSearch");
+    if (mode === "scan") {
+      if (scanArea) scanArea.style.display = "block";
+      if (searchArea) searchArea.style.display = "none";
+      btnScan && btnScan.classList.add("active");
+      btnSearch && btnSearch.classList.remove("active");
+      startCamera();
+    } else {
+      if (scanArea) scanArea.style.display = "none";
+      if (searchArea) searchArea.style.display = "block";
+      btnSearch && btnSearch.classList.add("active");
+      btnScan && btnScan.classList.remove("active");
+      stopCamera();
+    }
+  }
+
+  document.getElementById("pantryBtnScan")?.addEventListener("click", () => setPantryMode("scan"));
+  document.getElementById("pantryBtnSearch")?.addEventListener("click", () => setPantryMode("search"));
+
+  // Pantry search
+  async function runPantrySearch() {
+    const query = document.getElementById("pantrySearchInput")?.value.trim();
+    if (!query) return;
+    const container = document.getElementById("pantrySearchResults");
+    if (!container) return;
+    container.innerHTML = '<p style="color:#9b7acf;">Searching...</p>';
+    try {
+      const res = await fetch(`/api/food-search/?q=${encodeURIComponent(query)}`);
+      const data = await res.json();
+      if (!data.results || data.results.length === 0) {
+        container.innerHTML = '<p style="color:#9b7acf;">No results found.</p>';
+        return;
+      }
+      container.innerHTML = data.results.map((food, i) => `
+        <div style="background:rgba(155,89,182,0.15); border-radius:8px;
+                    padding:10px; margin:6px 0; text-align:left;">
+          <strong style="color:#d8b4ff;">${food.name || "Unknown"}</strong><br>
+          <span style="color:#9b7acf; font-size:13px;">
+            ${food.nutrients?.calories_kcal || "?"} kcal |
+            P: ${food.nutrients?.proteins_g || "?"}g
+          </span><br>
+          <button onclick='addSearchedToPantry(${JSON.stringify(food).replace(/'/g, "&#39;")})'
+                  style="margin-top:8px; width:100%; padding:7px; background:#8e44ad; border:none;
+                         border-radius:6px; color:white; cursor:pointer; font-weight:600;">
+            + Add to Pantry
+          </button>
+        </div>
+      `).join("");
+    } catch (e) {
+      container.innerHTML = '<p style="color:#ff6b6b;">Search failed. Try again.</p>';
+    }
+  }
+
+  window.runPantrySearch = runPantrySearch;
+
+  window.addSearchedToPantry = async function(food) {
+    await addToPantry(food);
+  };
+
   // Capture and scan barcode
-  captureBtn.addEventListener("click", async () => {
+  captureBtn && captureBtn.addEventListener("click", async () => {
     const canvas = document.createElement("canvas");
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
@@ -59,7 +131,6 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       let data = await response.json();
-      console.log("Scanned data:", data);
 
       if (data.barcode) {
         const foodData = data.barcode;
@@ -93,8 +164,6 @@ document.addEventListener("DOMContentLoaded", () => {
       micronutrients: food.micronutrients
     };
 
-    console.log("Adding to pantry:", payload);
-
     try {
       const res = await fetch("/api/pantry-log/", {
         method: "POST",
@@ -123,7 +192,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const container = document.getElementById("pantryItems");
 
     if (!pantryData || pantryData.length === 0) {
-      container.innerHTML = '<p class="empty-message">Your pantry is empty. Scan items to add them!</p>';
+      container.innerHTML = '<p class="empty-message">Your pantry is empty. Scan or search items to add them!</p>';
       return;
     }
 
@@ -138,7 +207,6 @@ document.addEventListener("DOMContentLoaded", () => {
         <p class="pantry-item-brand">${item.brand || "Unknown Brand"}</p>
         <p class="pantry-item-info">Category: ${item.category || "N/A"}</p>
         <p class="pantry-item-info">Calories: ${item.calories || 0} kcal per 100g</p>
-        <p class="pantry-item-quantity">Quantity: ${item.quantity} ${item.unit || "item"}${item.quantity > 1 ? "s" : ""}</p>
       `;
 
       container.appendChild(card);
@@ -157,28 +225,36 @@ document.addEventListener("DOMContentLoaded", () => {
     const generateBtn = document.getElementById("generateRecipeBtn");
     const retryBtn = document.getElementById("retryRecipeBtn");
 
-    // Hide retry button, show loading
     if (retryBtn) retryBtn.style.display = "none";
     generateBtn.disabled = true;
     generateBtn.textContent = "Generating...";
     resultDiv.innerHTML = '<p style="color: #9b7acf;">🔄 Creating your recipe...</p>';
 
     try {
-      const response = await fetch("/api/pantry-ai/", {
-        method: "GET",
-      });
+      const response = await fetch("/api/pantry-ai/", { method: "GET" });
 
       if (!response.ok) {
-        throw new Error("Failed to generate recipe");
+        const errData = await response.json().catch(() => ({}));
+
+        // Handle ingredient validation failure with a retry prompt
+        if (response.status === 422 && errData.needs_regeneration) {
+          resultDiv.innerHTML = `
+            <p style="color:#f7b731;">⚠️ AI used ingredients not in your pantry. Please try again.</p>
+          `;
+          generateBtn.textContent = "Try Again";
+          generateBtn.disabled = false;
+          if (retryBtn) retryBtn.style.display = "inline-block";
+          return;
+        }
+
+        throw new Error(errData.error || "Failed to generate recipe");
       }
 
       const data = await response.json();
-      console.log("Recipe data:", data);
-
       const nutrients = data.nutrients || {};
       const recipeName = nutrients.recipe_name || "AI Generated Recipe";
 
-      // Display recipe with nutrition summary and log button
+      // Display clean recipe text (JSON already stripped by backend)
       resultDiv.innerHTML = `
         <div style="text-align: left; color: #d8b4ff; line-height: 1.6;">
           <pre style="white-space: pre-wrap; font-family: inherit;">${data.recipe}</pre>
@@ -194,6 +270,9 @@ document.addEventListener("DOMContentLoaded", () => {
               🍽️ Log Meal?
             </button>
           </div>
+          <p style="margin-top:12px; font-size:12px; color:rgba(216,180,255,0.5); text-align:center; font-style:italic;">
+            ⚠️ AI may make mistakes — always double-check ingredients and portion sizes.
+          </p>
         </div>
       `;
 
@@ -201,7 +280,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const payload = {
           barcode: `recipe_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
           name: recipeName,
-          grams: 100, // quantity = grams/100 = 1 serving; nutrients represent the full recipe
+          grams: 100,
           nutrients: {
             calories_kcal: nutrients.calories || 0,
             proteins_g: nutrients.protein || 0,
@@ -235,11 +314,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     } catch (error) {
       console.error("Recipe generation error:", error);
-      resultDiv.innerHTML = '<p style="color: #ff6b6b;">Failed to generate recipe. Try again.</p>';
+      resultDiv.innerHTML = `<p style="color: #ff6b6b;">${error.message || "Failed to generate recipe. Try again."}</p>`;
       generateBtn.textContent = "Generate Recipe";
       generateBtn.disabled = false;
-
-      // Show retry button
       if (retryBtn) retryBtn.style.display = "inline-block";
     }
   }

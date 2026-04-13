@@ -47,15 +47,38 @@
       <div id="recipeResult" class="recipe-result"></div>
   </div>
 
-  <!-- Scan Overlay (opened by bottom nav + button) -->
+  <!-- Scan/Search Overlay (opened by bottom nav + button) -->
   <div id="scanOverlay" class="overlay">
     <div class="overlay-box">
       <h2>Add to Pantry</h2>
-      <div class="scanner-area">
+
+      <!-- Mode tabs -->
+      <div style="display:flex; gap:8px; margin-bottom:15px; justify-content:center;">
+        <button id="pantryBtnScan" class="mode-btn active">📷 Barcode</button>
+        <button id="pantryBtnSearch" class="mode-btn">🔍 Search</button>
+      </div>
+
+      <!-- Scan area -->
+      <div id="pantryScanArea" class="scanner-area">
         <video id="camera" width="300" height="200" autoplay playsinline></video>
         <button class="capture-btn" id="captureBtn">📷 Scan Barcode</button>
         <p id="scanResult">Point camera at barcode</p>
       </div>
+
+      <!-- Search area -->
+      <div id="pantrySearchArea" style="display:none;">
+        <div style="display:flex; gap:8px;">
+          <input type="text" id="pantrySearchInput" placeholder="e.g. oats, banana, milk"
+                 style="flex:1; padding:10px; border:2px solid #8e44ad; border-radius:8px;
+                        background:rgba(155,89,182,0.1); color:#d8b4ff; font-size:14px;"
+                 onkeydown="if(event.key==='Enter') runPantrySearch()">
+          <button onclick="runPantrySearch()"
+                  style="padding:10px 16px; background:#8e44ad; border:none; border-radius:8px;
+                         color:white; cursor:pointer; font-size:16px;">&#x2192;</button>
+        </div>
+        <div id="pantrySearchResults" style="margin-top:10px; max-height:300px; overflow-y:auto;"></div>
+      </div>
+
       <p class="close-hint">Tap outside to close</p>
     </div>
   </div>

@@ -96,6 +96,10 @@ def dashboard(request):
             "data": guest_data,
             "foodsData": [],
             "weightData": {"current_weight": None, "prediction": None, "history": []},
+            "heatmapData": [],
+            "streakInfo": {"streak": 0, "can_restore": False, "restore_next_available": None},
+            "is_premium": False,
+            "weight_unit": "kg",
             "user": request.user,
             "is_guest": True,
         })
@@ -105,9 +109,12 @@ def dashboard(request):
     except FitnessProfile.DoesNotExist:
         return redirect("questionnaire")
 
-    today = timezone.localdate()
+    today = timezone.now().date()  # UTC date for consistency
     last_week_start = today - timedelta(days=today.weekday() + 7)  # Last Monday
     WeeklySummary.create_from_daily_logs(profile, last_week_start)
+
+    # Refresh streak state (detect if streak broke since last visit)
+    profile.refresh_streak_state()
 
     weight_logs = profile.weight_logs.all()[:30]
 
@@ -148,17 +155,33 @@ def dashboard(request):
     }
 
     foods = DailyLog.get_daily_foods(profile, today)
-
     foodsData = foods
 
-    print(predicted_change)
-    print(weightData)
-    print("DEBUG current_weight:", weightData.get('current_weight'))
-    print("DEBUG history:", weightData.get('history'))
+    # 7-day activity heatmap
+    heatmap_data = []
+    for i in range(6, -1, -1):
+        day = today - timedelta(days=i)
+        count = DailyLog.objects.filter(profile=profile, date=day).count()
+        heatmap_data.append({'date': day.strftime('%Y-%m-%d'), 'count': count})
+
+    # Streak info
+    streak_info = {
+        'streak': profile.get_effective_streak(),
+        'can_restore': profile.can_restore_streak(),
+        'restore_next_available': None,
+    }
+    if profile.restore_last_used:
+        next_restore = profile.restore_last_used + timedelta(days=7)
+        streak_info['restore_next_available'] = next_restore.strftime('%Y-%m-%d')
+
     return render(request, 'dashboard.html', {
         "data": data,
         "foodsData": foodsData,
-        "weightData": weightData,       # Removed redundant json data template does it for me
+        "weightData": weightData,
+        "heatmapData": heatmap_data,
+        "streakInfo": streak_info,
+        "is_premium": profile.isPremium,
+        "weight_unit": profile.weight_unit_preference,
         "user": request.user,
         "is_guest": False,
     })
@@ -255,6 +278,7 @@ def saveFood(request):
 
         profile = FitnessProfile.objects.select_related('user').get(user=request.user)
         DailyLog.objects.create(food=food, quantity=float(grams / 100), profile=profile)
+        profile.update_streak()
 
         print(f"✅ Saved: {name} - {grams}g (quantity={grams / 100})")
         return JsonResponse({
@@ -299,18 +323,53 @@ def saveWeight(request):
     if request.method == 'POST':
         data = json.loads(request.body)
         weight = data.get('weight')
+        unit = data.get('unit', 'kg')  # 'kg' or 'lbs'
         try:
             weight = float(weight)
         except (TypeError, ValueError):
             return JsonResponse({'error': 'Invalid weight'}, status=400)
 
-        if weight <= 0 or weight > 500:
+        if weight <= 0 or weight > 1500:  # 1500 lbs / 500 kg reasonable upper bound
+            return JsonResponse({'error': 'Invalid weight'}, status=400)
+
+        # Convert to kg if input is in lbs
+        if unit == 'lbs':
+            weight = round(weight * 0.453592, 2)
+
+        if weight > 500:
             return JsonResponse({'error': 'Invalid weight'}, status=400)
 
         profile = FitnessProfile.objects.get(user=request.user)
+        # Save the user's unit preference
+        if unit in ('kg', 'lbs'):
+            profile.weight_unit_preference = unit
         profile.update_weight(weight)
         return JsonResponse({'status': 'success'})
     return None
+
+
+@csrf_exempt
+def restoreStreak(request):
+    if request.method == 'POST':
+        if not request.user.is_authenticated:
+            return JsonResponse({'error': 'Authentication required'}, status=401)
+        try:
+            profile = FitnessProfile.objects.get(user=request.user)
+        except FitnessProfile.DoesNotExist:
+            return JsonResponse({'error': 'Profile not found'}, status=404)
+
+        if not profile.isPremium:
+            return JsonResponse({'error': 'Premium feature only'}, status=403)
+
+        success = profile.restore_streak()
+        if success:
+            return JsonResponse({
+                'status': 'success',
+                'streak': profile.streak_count,
+            })
+        else:
+            return JsonResponse({'error': 'Cannot restore streak at this time'}, status=400)
+    return JsonResponse({'error': 'Method not allowed'}, status=405)
 
 
 def check_rate_limit(user_id, action, is_premium):
@@ -373,8 +432,23 @@ def aiRecipe(request):
                 "error": "Failed to generate recipe. Try again."
             }, status=500)
 
+        # Validate the recipe doesn't hallucinate non-pantry ingredients
+        is_valid, violations = utils.validateRecipeIngredients(recipe, ingredients)
+        if not is_valid:
+            print(f"⚠️ Recipe validation failed - hallucinated ingredients: {violations}")
+            return JsonResponse({
+                "error": "AI generated a recipe with ingredients not in your pantry. Please try again.",
+                "violations": violations,
+                "needs_regeneration": True,
+            }, status=422)
+
         nutrients = utils.extractNutrients(recipe)
-        return JsonResponse({"recipe": recipe, "nutrients": nutrients})
+        # Strip the trailing JSON line from the displayed recipe text
+        import re
+        display_recipe = re.sub(
+            r'\n?\{[^{}]*"recipe_name"[^{}]*\}\s*$', '', recipe, flags=re.DOTALL
+        ).strip()
+        return JsonResponse({"recipe": display_recipe, "nutrients": nutrients})
 
     except FitnessProfile.DoesNotExist:
         return JsonResponse({"error": "Profile not found"}, status=404)
