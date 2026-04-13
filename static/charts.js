@@ -196,6 +196,78 @@ document.addEventListener("DOMContentLoaded", () => {
   // ---------- Load data ----------
   const chartData = JSON.parse(document.getElementById("chart-data").textContent);
   const weightData = JSON.parse(document.getElementById("weight-data").textContent);
+  const heatmapEl = document.getElementById("heatmap-data");
+  const heatmapData = heatmapEl ? JSON.parse(heatmapEl.textContent) : [];
+  const streakEl = document.getElementById("streak-info");
+  const streakInfo = streakEl ? JSON.parse(streakEl.textContent) : {streak: 0, can_restore: false};
+
+  // ---------- Streak display ----------
+  const streakNumber = document.getElementById("streakNumber");
+  if (streakNumber) streakNumber.textContent = streakInfo.streak || 0;
+
+  const restoreBtn = document.getElementById("restoreBtn");
+  if (restoreBtn) {
+    if (typeof IS_PREMIUM !== 'undefined' && IS_PREMIUM && streakInfo.can_restore) {
+      restoreBtn.style.display = "block";
+      restoreBtn.addEventListener("click", async () => {
+        restoreBtn.disabled = true;
+        restoreBtn.textContent = "Restoring...";
+        try {
+          const res = await fetch("/api/streak-restore/", { method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({})
+          });
+          const data = await res.json();
+          if (res.ok) {
+            showToast("🔥 Streak restored! " + data.streak + " day streak!");
+            if (streakNumber) streakNumber.textContent = data.streak;
+            restoreBtn.style.display = "none";
+          } else {
+            showToast(data.error || "Could not restore streak.");
+            restoreBtn.disabled = false;
+            restoreBtn.textContent = "🔄 Restore";
+          }
+        } catch (e) {
+          showToast("Network error. Try again.");
+          restoreBtn.disabled = false;
+          restoreBtn.textContent = "🔄 Restore";
+        }
+      });
+    } else if (typeof IS_PREMIUM !== 'undefined' && IS_PREMIUM && streakInfo.restore_next_available) {
+      restoreBtn.style.display = "block";
+      restoreBtn.disabled = true;
+      restoreBtn.textContent = `🔄 Restore (available ${streakInfo.restore_next_available})`;
+    }
+  }
+
+  // ---------- 7-Day Activity Heatmap ----------
+  const heatmapGrid = document.getElementById("heatmapGrid");
+  if (heatmapGrid && heatmapData.length) {
+    const maxCount = Math.max(...heatmapData.map(d => d.count), 1);
+    heatmapData.forEach(day => {
+      const cell = document.createElement("div");
+      cell.className = "heatmap-cell";
+      const intensity = day.count === 0 ? 0 : Math.max(0.2, day.count / maxCount);
+      cell.style.background = day.count === 0
+        ? "rgba(155,89,182,0.1)"
+        : `rgba(176,132,247,${intensity})`;
+      // Short date label (Mon, Tue...)
+      const dateObj = new Date(day.date + "T00:00:00Z");  // UTC parsing for consistency
+      const dayName = dateObj.toLocaleDateString('en', { weekday: 'short', timeZone: 'UTC' });
+      cell.title = `${day.date}: ${day.count} food${day.count !== 1 ? 's' : ''} logged`;
+      const label = document.createElement("span");
+      label.className = "heatmap-label";
+      label.textContent = dayName;
+      cell.appendChild(label);
+      if (day.count > 0) {
+        const num = document.createElement("span");
+        num.className = "heatmap-count";
+        num.textContent = day.count;
+        cell.appendChild(num);
+      }
+      heatmapGrid.appendChild(cell);
+    });
+  }
 
   // ---------- Semicircle (macros) ----------
   const canvas = document.getElementById("macroChart");
@@ -386,19 +458,48 @@ document.addEventListener("DOMContentLoaded", () => {
 
   document.getElementById("logWeightBtn")?.addEventListener("click", () => {
     weightOverlay.classList.add("show");
+    // Set unit toggle to user's preference
+    const savedUnit = (typeof WEIGHT_UNIT !== 'undefined') ? WEIGHT_UNIT : 'kg';
+    setWeightUnit(savedUnit);
   });
+
+  // ---------- Weight unit toggle ----------
+  let currentWeightUnit = (typeof WEIGHT_UNIT !== 'undefined') ? WEIGHT_UNIT : 'kg';
+
+  function setWeightUnit(unit) {
+    currentWeightUnit = unit;
+    const kgBtn = document.getElementById("unitKgBtn");
+    const lbsBtn = document.getElementById("unitLbsBtn");
+    const label = document.getElementById("weightInputLabel");
+    const input = document.getElementById("weightInput");
+    if (unit === 'kg') {
+      kgBtn && kgBtn.classList.add("active");
+      lbsBtn && lbsBtn.classList.remove("active");
+      if (label) label.textContent = "Weight (kg):";
+      if (input) input.placeholder = "70.5";
+    } else {
+      lbsBtn && lbsBtn.classList.add("active");
+      kgBtn && kgBtn.classList.remove("active");
+      if (label) label.textContent = "Weight (lbs):";
+      if (input) input.placeholder = "155";
+    }
+  }
+
+  document.getElementById("unitKgBtn")?.addEventListener("click", () => setWeightUnit('kg'));
+  document.getElementById("unitLbsBtn")?.addEventListener("click", () => setWeightUnit('lbs'));
 
   document.getElementById("saveWeightBtn").addEventListener("click", async () => {
     const weight = parseFloat(document.getElementById("weightInput").value);
-    if (!weight || weight <= 0 || weight > 500) {
-      alert("Enter a valid weight.");
+    const maxVal = currentWeightUnit === 'lbs' ? 1100 : 500;
+    if (!weight || weight <= 0 || weight > maxVal) {
+      alert(`Enter a valid weight in ${currentWeightUnit}.`);
       return;
     }
     try {
       const res = await fetch("/api/weight-log/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ weight }),
+        body: JSON.stringify({ weight, unit: currentWeightUnit }),
       });
       if (!res.ok) { alert("Failed to save weight."); return; }
       location.reload();

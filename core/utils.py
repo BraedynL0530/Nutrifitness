@@ -223,17 +223,30 @@ def generateRecipe(ingredients, allergies, diet):
         return None
     client = Cerebras(api_key=api_key)
 
+    ingredient_list = ', '.join(ingredients)
+    allergy_text = ', '.join(allergies) if allergies else 'none'
+    diet_text = ', '.join(diet) if diet else 'none'
+
     prompt = (
-        f"You are a nutrition assistant. Create a healthy recipe with detailed instructions using ONLY these ingredients: {', '.join(ingredients)}. "
-        f"You MUST use only items from this list. Do not add salmon, chicken, meat, or any other protein not listed. "
-        f"Dietary preferences: {', '.join(diet) if diet else 'none'}. "
-        f"Avoid allergens: {', '.join(allergies) if allergies else 'none'}. "
-        f"Create a recipe using ONLY the ingredients provided. "
-        f"End with this JSON: {{\"recipe_name\": \"NAME\", \"calories\": NUMBER, \"protein\": NUMBER, \"carbs\": NUMBER, \"fat\": NUMBER}}"
+        f"You are a recipe generator. You MUST create a recipe using ONLY these exact ingredients: [{ingredient_list}].\n\n"
+        f"STRICT RULES - violating any rule means failure:\n"
+        f"1. Use ONLY ingredients from the list above. Do NOT add any ingredient not in this list.\n"
+        f"2. Do NOT add proteins (chicken, beef, salmon, eggs, etc.) unless explicitly listed.\n"
+        f"3. Do NOT add condiments, oils, spices, or seasonings unless explicitly listed.\n"
+        f"4. Do NOT add water or salt unless explicitly listed.\n"
+        f"5. Every ingredient in your recipe must appear in the provided list.\n\n"
+        f"Dietary preferences: {diet_text}.\n"
+        f"Allergens to avoid: {allergy_text}.\n\n"
+        f"Write a clear recipe with:\n"
+        f"- Recipe name\n"
+        f"- Ingredients (from the list ONLY, with quantities)\n"
+        f"- Step-by-step instructions\n\n"
+        f"At the very end, append ONLY this JSON on its own line (no markdown, no code block):\n"
+        f'{{\"recipe_name\": \"NAME\", \"calories\": NUMBER, \"protein\": NUMBER, \"carbs\": NUMBER, \"fat\": NUMBER}}'
     )
-    
+
     stream = client.chat.completions.create(
-        model="llama3.1-8b", # Dudes changed the model since i last added this i was wondering the issue may experiment with models
+        model="llama3.1-8b",
         messages=[
             {
                 "role": "user",
@@ -241,7 +254,7 @@ def generateRecipe(ingredients, allergies, diet):
             }
         ],
         stream=True,
-        temperature=0.7,
+        temperature=0.4,  # Lower temperature reduces hallucinations
         max_tokens=1000,
     )
 
@@ -252,6 +265,42 @@ def generateRecipe(ingredients, allergies, diet):
             result_text += delta
 
     return result_text
+
+
+def validateRecipeIngredients(recipe_text, allowed_ingredients):
+    """
+    Check if the recipe only references ingredients from the allowed list.
+    Returns (is_valid, list_of_violating_ingredients).
+    Case-insensitive matching.
+    """
+    import re
+    allowed_lower = {ing.lower() for ing in allowed_ingredients}
+
+    # Very basic cooking staples that are acceptable even if not explicitly listed
+    universal_staples = {'water', 'salt', 'ice'}
+
+    # Extract the instruction/ingredients section (before the JSON line)
+    text_without_json = re.sub(
+        r'\{[^{}]*"recipe_name"[^{}]*\}\s*$', '', recipe_text, flags=re.DOTALL
+    ).strip()
+
+    # Simple heuristic: look for common proteins/ingredients that are NOT in pantry
+    common_proteins = [
+        'salmon', 'chicken', 'beef', 'pork', 'turkey', 'tuna', 'shrimp',
+        'lamb', 'duck', 'bacon', 'ham', 'sausage', 'steak', 'fish',
+        'crab', 'lobster', 'scallop', 'cod', 'tilapia', 'catfish',
+    ]
+
+    violations = []
+    text_lower = text_without_json.lower()
+
+    for protein in common_proteins:
+        # Check if this protein appears in the recipe text but NOT in pantry or staples
+        if re.search(r'\b' + protein + r'\b', text_lower):
+            if protein not in allowed_lower and protein not in universal_staples:
+                violations.append(protein)
+
+    return len(violations) == 0, violations
 
 
 def extractNutrients(recipe_text):

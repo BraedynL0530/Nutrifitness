@@ -24,6 +24,16 @@ class FitnessProfile(models.Model):
     maxes = models.JSONField(default=dict, blank=True)  # {"bench":80, ...}
     isPremium = models.BooleanField(default=False)
 
+    # Streak tracking
+    streak_count = models.IntegerField(default=0)
+    streak_last_logged = models.DateField(null=True, blank=True)
+    streak_broken_date = models.DateField(null=True, blank=True)  # first missed day
+    streak_at_break = models.IntegerField(default=0)  # streak count just before it broke
+    restore_last_used = models.DateField(null=True, blank=True)
+
+    # Weight unit preference
+    weight_unit_preference = models.CharField(max_length=5, default='kg')
+
     def __str__(self):
         return self.user.username
 
@@ -37,6 +47,96 @@ class FitnessProfile(models.Model):
         self.weightKg = new_weight
         self.save()
         WeightLog.objects.create(profile=self, weight=new_weight)
+
+    def update_streak(self):
+        """Update streak when user logs food (UTC dates)."""
+        today = timezone.now().date()
+        yesterday = today - timedelta(days=1)
+
+        if self.streak_last_logged is None:
+            self.streak_count = 1
+            self.streak_last_logged = today
+        elif self.streak_last_logged == today:
+            return  # Already logged today
+        elif self.streak_last_logged == yesterday:
+            self.streak_count += 1
+            self.streak_last_logged = today
+        else:
+            # Streak breaks - missed at least one day
+            first_missed = self.streak_last_logged + timedelta(days=1)
+            # Only update broken info if not already set for this break event
+            if self.streak_broken_date != first_missed:
+                self.streak_broken_date = first_missed
+                self.streak_at_break = self.streak_count
+            self.streak_count = 1
+            self.streak_last_logged = today
+        self.save()
+
+    def refresh_streak_state(self):
+        """Called on dashboard load to detect if streak has broken without requiring a food log."""
+        if self.streak_last_logged is None:
+            return
+
+        today = timezone.now().date()
+        yesterday = today - timedelta(days=1)
+
+        if self.streak_last_logged < yesterday:
+            first_missed = self.streak_last_logged + timedelta(days=1)
+            if self.streak_broken_date != first_missed:
+                self.streak_broken_date = first_missed
+                self.streak_at_break = self.streak_count
+                self.save()
+
+    def get_effective_streak(self):
+        """Return the visually meaningful streak count (0 if broken)."""
+        if self.streak_last_logged is None:
+            return 0
+        today = timezone.now().date()
+        yesterday = today - timedelta(days=1)
+        if self.streak_last_logged >= yesterday:
+            return self.streak_count
+        return 0
+
+    def can_restore_streak(self):
+        """Check if premium user can restore their streak."""
+        if not self.isPremium:
+            return False
+        if not self.streak_broken_date:
+            return False
+
+        today = timezone.now().date()
+        yesterday = today - timedelta(days=1)
+
+        # The first missed day must be yesterday
+        if self.streak_broken_date != yesterday:
+            return False
+
+        # Weekly limit: once per 7 days
+        if self.restore_last_used:
+            if (today - self.restore_last_used).days < 7:
+                return False
+
+        return True
+
+    def restore_streak(self):
+        """Restore streak for premium users (once per week, only if missed 1 day)."""
+        if not self.can_restore_streak():
+            return False
+
+        today = timezone.now().date()
+
+        if self.streak_last_logged == today:
+            # User already logged today: restore pre-break count + 1 for today
+            self.streak_count = (self.streak_at_break or 0) + 1
+        else:
+            # User hasn't logged today: restore pre-break count, patch missed day
+            self.streak_count = self.streak_at_break or 0
+            self.streak_last_logged = today - timedelta(days=1)
+
+        self.streak_broken_date = None
+        self.restore_last_used = today
+        self.save()
+        return True
 
 
 class WeightLog(models.Model):
