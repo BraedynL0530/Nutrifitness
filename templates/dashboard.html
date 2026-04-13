@@ -34,37 +34,50 @@
   {% endif %}
 
     <!-- Tab Navigation -->
-  <div class="tab-container">
+  <div class="tab-container" id="tabContainer">
     <button class="tab-btn active" data-tab="food">Food Tracking</button>
     <button class="tab-btn" data-tab="weight">Weight Log</button>
   </div>
 
+  <div class="panels-wrapper">
+
   <!-- Food Tracking Tab -->
   <div class="tab-content active" id="food-tab">
-      <!-- Streak Card -->
-      <div class="streak-card" id="streakCard">
-        <div class="streak-flame">🔥</div>
-        <div class="streak-info">
-          <span class="streak-number" id="streakNumber">0</span>
-          <span class="streak-label">day streak</span>
-        </div>
-        {% if not is_guest %}
-        <button class="restore-btn" id="restoreBtn" style="display:none;" title="Restore streak (premium, once/week)">
-          🔄 Restore
-        </button>
-        {% endif %}
-      </div>
 
-      <!-- 7-Day Activity Heatmap -->
-      <div class="heatmap-container" id="heatmapContainer">
-        <p class="heatmap-title">Last 7 Days</p>
-        <div class="heatmap-grid" id="heatmapGrid"></div>
+      <!-- Streak Badge (top-left, compact, clickable) -->
+      <div class="streak-area" id="streakArea">
+        <button class="streak-badge" id="streakCard" title="Click to see activity heatmap">
+          🔥 <span id="streakNumber">0</span>
+        </button>
+        <!-- Heatmap Popup (shown on streak click) -->
+        <div class="heatmap-popup" id="heatmapContainer">
+          <p class="heatmap-title">Last 7 Days</p>
+          <div class="heatmap-grid" id="heatmapGrid"></div>
+          {% if not is_guest %}
+          <button class="restore-btn" id="restoreBtn" style="display:none;" title="Restore streak (premium, once/week)">
+            🔄 Restore
+          </button>
+          {% endif %}
+        </div>
       </div>
 
       <div class="dashboard-container">
         <div class="dashboard">
           <!-- 1. Macro chart at top -->
           <canvas id="macroChart" width="320" height="160" class="clickable"></canvas>
+
+          <!-- Macro color legend -->
+          <div class="macro-legend">
+            <span class="legend-item">
+              <span class="legend-swatch" style="background:#b084f7;"></span>Protein
+            </span>
+            <span class="legend-item">
+              <span class="legend-swatch" style="background:#8e44ad;"></span>Carbs
+            </span>
+            <span class="legend-item">
+              <span class="legend-swatch" style="background:#6c3d99;"></span>Fat
+            </span>
+          </div>
 
           <!-- 2. Calorie bar in middle -->
           <div class="bar-container clickable">
@@ -132,6 +145,8 @@
       </div>
     </div>
   </div>
+
+  </div><!-- end panels-wrapper -->
 
   <!-- Overlay for macros/micros -->
   <div id="macroOverlay" class="overlay">

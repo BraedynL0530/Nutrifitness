@@ -205,6 +205,22 @@ document.addEventListener("DOMContentLoaded", () => {
   const streakNumber = document.getElementById("streakNumber");
   if (streakNumber) streakNumber.textContent = streakInfo.streak || 0;
 
+  // Streak badge → toggle heatmap popup
+  const streakBadge = document.getElementById("streakCard");
+  const heatmapPopup = document.getElementById("heatmapContainer");
+  if (streakBadge && heatmapPopup) {
+    streakBadge.addEventListener("click", (e) => {
+      e.stopPropagation();
+      heatmapPopup.classList.toggle("open");
+    });
+    // Close heatmap popup when clicking outside
+    document.addEventListener("click", (e) => {
+      if (!heatmapPopup.contains(e.target) && !streakBadge.contains(e.target)) {
+        heatmapPopup.classList.remove("open");
+      }
+    });
+  }
+
   const restoreBtn = document.getElementById("restoreBtn");
   if (restoreBtn) {
     if (typeof IS_PREMIUM !== 'undefined' && IS_PREMIUM && streakInfo.can_restore) {
@@ -251,9 +267,9 @@ document.addEventListener("DOMContentLoaded", () => {
       cell.style.background = day.count === 0
         ? "rgba(155,89,182,0.1)"
         : `rgba(176,132,247,${intensity})`;
-      // Short date label (Mon, Tue...)
-      const dateObj = new Date(day.date + "T00:00:00Z");  // UTC parsing for consistency
-      const dayName = dateObj.toLocaleDateString('en', { weekday: 'short', timeZone: 'UTC' });
+      // Short date label (Mon, Tue...) — parse as local time
+      const dateObj = new Date(day.date + "T12:00:00");  // noon local time avoids DST edge cases
+      const dayName = dateObj.toLocaleDateString('en', { weekday: 'short' });
       cell.title = `${day.date}: ${day.count} food${day.count !== 1 ? 's' : ''} logged`;
       const label = document.createElement("span");
       label.className = "heatmap-label";
