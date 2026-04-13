@@ -26,6 +26,12 @@
 
   {% include 'navbar.html' %}
 
+  {% if is_guest %}
+  <div class="guest-banner">
+    👋 Viewing as guest — <a href="{% url 'login' %}">Login</a> or <a href="{% url 'register' %}">Register</a> to save your pantry
+  </div>
+  {% endif %}
+
   <div class="pantry-container">
     <h1>My Pantry</h1>
 
@@ -37,14 +43,11 @@
 
   <div class="recipe-section">
       <button id="generateRecipeBtn" class="generate-recipe-btn">🍳 Generate Recipe</button>
-      <button id="retryRecipeBtn" class="retry-btn" style="display: none;">↻</button>
+      <button id="retryRecipeBtn" class="retry-btn" style="display: none;">&#x21bb;</button>
       <div id="recipeResult" class="recipe-result"></div>
   </div>
 
-  <!-- Floating scan button -->
-  <div id="scanButton" class="scan-button">+</div>
-
-  <!-- Scan Overlay -->
+  <!-- Scan Overlay (opened by bottom nav + button) -->
   <div id="scanOverlay" class="overlay">
     <div class="overlay-box">
       <h2>Add to Pantry</h2>
@@ -59,7 +62,8 @@
 
   <!-- Inject pantry data from Django -->
   <script>
-    const pantryData = {{ pantry_data|safe }};
+    var pantryData = {{ pantry_data|safe }};
+    var IS_GUEST = {{ is_guest|yesno:"true,false" }};
   </script>
 
   <script src="{% static 'pantry.js' %}"></script>

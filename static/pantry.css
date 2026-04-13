@@ -268,3 +268,21 @@ body {
   from { transform: scale(0.9); opacity: 0; }
   to { transform: scale(1); opacity: 1; }
 }
+/* Guest mode banner */
+.guest-banner {
+  background: rgba(155, 89, 182, 0.18);
+  border: 1px solid rgba(142, 68, 173, 0.4);
+  border-radius: 10px;
+  padding: 10px 16px;
+  margin: 12px auto 16px;
+  max-width: 800px;
+  width: 100%;
+  text-align: center;
+  font-size: 13px;
+  color: #c9b3e8;
+}
+
+.guest-banner a {
+  color: #b084f7;
+  text-decoration: underline;
+}

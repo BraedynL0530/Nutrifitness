@@ -26,6 +26,13 @@
 
   {% include 'navbar.html' %}
 
+  {% if is_guest %}
+  <!-- Guest mode banner -->
+  <div class="guest-banner">
+    👋 Viewing as guest — <a href="{% url 'login' %}">Login</a> or <a href="{% url 'register' %}">Register</a> to save your data
+  </div>
+  {% endif %}
+
     <!-- Tab Navigation -->
   <div class="tab-container">
     <button class="tab-btn active" data-tab="food">Food Tracking</button>
@@ -36,10 +43,20 @@
   <div class="tab-content active" id="food-tab">
       <div class="dashboard-container">
         <div class="dashboard">
+          <!-- 1. Macro chart at top -->
           <canvas id="macroChart" width="320" height="160" class="clickable"></canvas>
 
+          <!-- 2. Calorie bar in middle -->
+          <div class="bar-container clickable">
+            <div class="bar-bg">
+              <div id="bar-fill"></div>
+            </div>
+            <p id="calorieText"></p>
+          </div>
+
+          <!-- 3. Food log at bottom -->
           <div class="food-log-block">
-              <h3>Food Eaten</h3>
+              <h3>Food Eaten Today</h3>
               <ul id="foodLog">
                 {% for food in foodsData %}
                     <li>{{ food.name }} — {{ food.calories|floatformat:0 }} kcal</li>
@@ -47,16 +64,6 @@
                 </ul>
           </div>
 
-          <div class="middle-area">
-            <div id="plusButton">+</div>
-          </div>
-
-          <div class="bar-container clickable">
-            <div class="bar-bg">
-              <div id="bar-fill"></div>
-            </div>
-            <p id="calorieText"></p>
-          </div>
         </div>
       </div>
   </div>
@@ -142,7 +149,7 @@
       <video id="camera" width="280" height="180" autoplay playsinline
              style="border-radius:10px; border:2px solid #8e44ad; display:block; margin:0 auto;"></video>
       <button class="placeholder-link" id="captureBtn" style="width:100%; margin-top:10px;">
-        📷 Capture & Scan
+        📷 Capture &amp; Scan
       </button>
       <p id="scanResult" style="margin:10px 0; color:#d8b4ff;">Point camera at barcode</p>
       <div id="logSection" style="display:none; margin-top:10px;">
@@ -165,7 +172,7 @@
                onkeydown="if(event.key==='Enter') runFoodSearch()">
         <button onclick="runFoodSearch()"
                 style="padding:10px 16px; background:#8e44ad; border:none; border-radius:8px;
-                       color:white; cursor:pointer; font-size:16px;">→</button>
+                       color:white; cursor:pointer; font-size:16px;">&#x2192;</button>
       </div>
       <div id="searchResults" style="margin-top:10px; max-height:300px; overflow-y:auto;"></div>
     </div>
@@ -222,6 +229,9 @@
   {{ weightData|json_script:"weight-data" }}
   {{ foodsData|json_script:"foods-data" }}
 
+  <script>
+    var IS_GUEST = {{ is_guest|yesno:"true,false" }};
+  </script>
   <script src="{% static 'charts.js' %}"></script>
   <script src="{% static 'navbar.js' %}"></script>
   <script>

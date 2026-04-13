@@ -1,3 +1,41 @@
+// ---- Toast notification (non-blocking) ----
+function showToast(msg, duration) {
+  duration = duration || 3000;
+  var toast = document.getElementById('nf-toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'nf-toast';
+    toast.style.cssText = [
+      'position:fixed', 'bottom:76px', 'left:50%', 'transform:translateX(-50%)',
+      'background:rgba(26,8,37,0.97)', 'border:1px solid #8e44ad',
+      'border-radius:10px', 'padding:10px 18px', 'color:#d8b4ff',
+      'font-size:13px', 'z-index:2000', 'pointer-events:none',
+      'opacity:0', 'transition:opacity 0.3s', 'text-align:center',
+      'max-width:80vw'
+    ].join(';');
+    document.body.appendChild(toast);
+  }
+  toast.textContent = msg;
+  toast.style.opacity = '1';
+  clearTimeout(toast._timer);
+  toast._timer = setTimeout(function() { toast.style.opacity = '0'; }, duration);
+}
+function _guestKey() {
+  const today = new Date().toISOString().split('T')[0];
+  return 'guestFoodLog_' + today;
+}
+
+function getGuestFoodLog() {
+  try { return JSON.parse(localStorage.getItem(_guestKey()) || '[]'); }
+  catch(e) { return []; }
+}
+
+function saveGuestFoodLog(items) {
+  try { localStorage.setItem(_guestKey(), JSON.stringify(items)); }
+  catch(e) {}
+}
+
+// ---- Food mode tabs ----
 function setFoodMode(mode) {
   ["scan", "search", "manual"].forEach(m => {
     document.getElementById(`${m}Mode`).style.display = m === mode ? "block" : "none";
@@ -71,6 +109,24 @@ async function logManualFood() {
 }
 
 async function logFoodToServer(food, grams) {
+  if (typeof IS_GUEST !== 'undefined' && IS_GUEST) {
+    // Guest mode: store in localStorage
+    const multiplier = grams / 100;
+    const logs = getGuestFoodLog();
+    logs.push({
+      name: food.name || "Unknown",
+      grams: grams,
+      calories: ((food.nutrients?.calories_kcal || 0) * multiplier).toFixed(0),
+      protein:  ((food.nutrients?.proteins_g    || 0) * multiplier).toFixed(1),
+      carbs:    ((food.nutrients?.carbohydrates_g || 0) * multiplier).toFixed(1),
+      fat:      ((food.nutrients?.fat_g          || 0) * multiplier).toFixed(1),
+    });
+    saveGuestFoodLog(logs);
+    showToast(food.name + ' logged! Login to save your data permanently.');
+    location.reload();
+    return;
+  }
+
   const payload = {
     barcode: food.barcode || `manual_${Date.now()}`,
     name: food.name,
@@ -96,6 +152,31 @@ async function logFoodToServer(food, grams) {
   } catch (e) {
     alert("Network error. Try again.");
   }
+}
+
+// ---- Load guest food log into the food list UI ----
+function applyGuestFoodLog() {
+  const logs = getGuestFoodLog();
+  if (!logs.length) return;
+
+  const foodLogEl = document.getElementById("foodLog");
+  if (foodLogEl) {
+    foodLogEl.innerHTML = logs
+      .map(item => `<li>${item.name} — ${item.calories} kcal</li>`)
+      .join("");
+  }
+
+  // Update calorie bar with guest totals
+  const totalCals = logs.reduce((sum, f) => sum + parseFloat(f.calories || 0), 0);
+  const chartData = JSON.parse(document.getElementById("chart-data").textContent);
+  const goal = chartData.goal_calories || 2000;
+  const percent = Math.min((totalCals / goal) * 100, 100);
+  setTimeout(() => {
+    const fill = document.getElementById("bar-fill");
+    if (fill) fill.style.width = percent + "%";
+  }, 100);
+  const calText = document.getElementById("calorieText");
+  if (calText) calText.innerText = `${Math.round(totalCals)} / ${goal} kcal`;
 }
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -150,6 +231,11 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("bar-fill").style.width = percent + "%";
   }, 100);
   document.getElementById("calorieText").innerText = `${eaten} / ${goal} kcal`;
+
+  // ---------- Guest food log (override bar + list) ----------
+  if (typeof IS_GUEST !== 'undefined' && IS_GUEST) {
+    applyGuestFoodLog();
+  }
 
   // ---------- Weight chart ----------
   if (weightData.history && weightData.history.length > 0) {
@@ -282,17 +368,21 @@ document.addEventListener("DOMContentLoaded", () => {
   const captureBtn = document.getElementById("captureBtn");
   const scanResult = document.getElementById("scanResult");
 
-  document.getElementById("plusButton").addEventListener("click", () => {
-    scanOverlay.classList.add("show");
-    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-      navigator.mediaDevices.getUserMedia({ video: true })
-        .then(stream => { video.srcObject = stream; })
-        .catch(err => {
-          console.error("Camera denied:", err);
-          if (scanResult) scanResult.textContent = "Camera not available.";
-        });
-    }
-  });
+  // Bottom nav + button opens the scan/log food overlay
+  const bottomNavAdd = document.getElementById("bottomNavAdd");
+  if (bottomNavAdd) {
+    bottomNavAdd.addEventListener("click", () => {
+      scanOverlay.classList.add("show");
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        navigator.mediaDevices.getUserMedia({ video: true })
+          .then(stream => { video.srcObject = stream; })
+          .catch(err => {
+            console.error("Camera denied:", err);
+            if (scanResult) scanResult.textContent = "Camera not available.";
+          });
+      }
+    });
+  }
 
   document.getElementById("logWeightBtn")?.addEventListener("click", () => {
     weightOverlay.classList.add("show");
@@ -357,7 +447,7 @@ document.addEventListener("DOMContentLoaded", () => {
     overlay.addEventListener("click", (e) => {
       if (e.target === overlay) {
         overlay.classList.remove("show");
-        if (video.srcObject) {
+        if (video && video.srcObject) {
           video.srcObject.getTracks().forEach(t => t.stop());
           video.srcObject = null;
         }
