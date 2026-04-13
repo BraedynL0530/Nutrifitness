@@ -13,7 +13,8 @@ document.addEventListener("DOMContentLoaded", () => {
   if (bottomNavAdd) {
     bottomNavAdd.addEventListener("click", () => {
       scanOverlay.classList.add("show");
-      startCamera();
+      // Start in scan mode by default only when overlay opens
+      setPantryMode("scan");
     });
   }
 
@@ -81,31 +82,38 @@ document.addEventListener("DOMContentLoaded", () => {
         container.innerHTML = '<p style="color:#9b7acf;">No results found.</p>';
         return;
       }
+      // Store results for safe event-delegated access
+      window._pantrySearchResults = data.results;
       container.innerHTML = data.results.map((food, i) => `
         <div style="background:rgba(155,89,182,0.15); border-radius:8px;
                     padding:10px; margin:6px 0; text-align:left;">
-          <strong style="color:#d8b4ff;">${food.name || "Unknown"}</strong><br>
+          <strong style="color:#d8b4ff;">${food.name ? food.name.replace(/[<>]/g, '') : "Unknown"}</strong><br>
           <span style="color:#9b7acf; font-size:13px;">
             ${food.nutrients?.calories_kcal || "?"} kcal |
             P: ${food.nutrients?.proteins_g || "?"}g
           </span><br>
-          <button onclick='addSearchedToPantry(${JSON.stringify(food).replace(/'/g, "&#39;")})'
+          <button data-result-index="${i}"
                   style="margin-top:8px; width:100%; padding:7px; background:#8e44ad; border:none;
                          border-radius:6px; color:white; cursor:pointer; font-weight:600;">
             + Add to Pantry
           </button>
         </div>
       `).join("");
+
+      // Event delegation to avoid inline handler XSS
+      container.querySelectorAll("button[data-result-index]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const idx = parseInt(btn.getAttribute("data-result-index"), 10);
+          const food = window._pantrySearchResults && window._pantrySearchResults[idx];
+          if (food) addToPantry(food);
+        });
+      });
     } catch (e) {
       container.innerHTML = '<p style="color:#ff6b6b;">Search failed. Try again.</p>';
     }
   }
 
   window.runPantrySearch = runPantrySearch;
-
-  window.addSearchedToPantry = async function(food) {
-    await addToPantry(food);
-  };
 
   // Capture and scan barcode
   captureBtn && captureBtn.addEventListener("click", async () => {

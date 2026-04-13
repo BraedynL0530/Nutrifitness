@@ -14,6 +14,9 @@ from .models import FitnessProfile, DailyLog, PantryItem,FoodItem,WeeklySummary,
 from . import utils
 import uuid
 from django.core.cache import cache
+
+LBS_TO_KG = 0.453592  # Conversion factor: 1 pound = 0.453592 kilograms
+
 def register(request):
     #planning to add oauth later
     if request.method == "POST":
@@ -334,7 +337,7 @@ def saveWeight(request):
 
         # Convert to kg if input is in lbs
         if unit == 'lbs':
-            weight = round(weight * 0.453592, 2)
+            weight = round(weight * LBS_TO_KG, 2)
 
         if weight > 500:
             return JsonResponse({'error': 'Invalid weight'}, status=400)
@@ -419,11 +422,6 @@ def aiRecipe(request):
 
         # Get diet
         diet_list = [profile.diet] if profile.diet else []
-
-        print(f"Generating recipe with:")
-        print(f"  Ingredients: {ingredients}")
-        print(f"  Allergies: {allergy_list}")
-        print(f"  Diet: {diet_list}")
 
         recipe = utils.generateRecipe(ingredients, allergy_list, diet_list)
 

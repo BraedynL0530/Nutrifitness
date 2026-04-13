@@ -276,17 +276,15 @@ def validateRecipeIngredients(recipe_text, allowed_ingredients):
     import re
     allowed_lower = {ing.lower() for ing in allowed_ingredients}
 
+    # Very basic cooking staples that are acceptable even if not explicitly listed
+    universal_staples = {'water', 'salt', 'ice'}
+
     # Extract the instruction/ingredients section (before the JSON line)
-    # Remove the trailing JSON block for analysis
     text_without_json = re.sub(
         r'\{[^{}]*"recipe_name"[^{}]*\}\s*$', '', recipe_text, flags=re.DOTALL
     ).strip()
 
-    # Common pantry items that are acceptable even if not explicitly listed
-    # (these are very basic cooking staples - water, salt are fine)
-    universal_staples = {'water', 'salt', 'ice'}
-
-    # Simple heuristic: look for common protein/ingredient words that are NOT in pantry
+    # Simple heuristic: look for common proteins/ingredients that are NOT in pantry
     common_proteins = [
         'salmon', 'chicken', 'beef', 'pork', 'turkey', 'tuna', 'shrimp',
         'lamb', 'duck', 'bacon', 'ham', 'sausage', 'steak', 'fish',
@@ -297,7 +295,7 @@ def validateRecipeIngredients(recipe_text, allowed_ingredients):
     text_lower = text_without_json.lower()
 
     for protein in common_proteins:
-        # Check if this protein appears in the recipe text but NOT in pantry
+        # Check if this protein appears in the recipe text but NOT in pantry or staples
         if re.search(r'\b' + protein + r'\b', text_lower):
             if protein not in allowed_lower and protein not in universal_staples:
                 violations.append(protein)

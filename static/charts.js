@@ -252,8 +252,8 @@ document.addEventListener("DOMContentLoaded", () => {
         ? "rgba(155,89,182,0.1)"
         : `rgba(176,132,247,${intensity})`;
       // Short date label (Mon, Tue...)
-      const dateObj = new Date(day.date + "T00:00:00");
-      const dayName = dateObj.toLocaleDateString('en', { weekday: 'short' });
+      const dateObj = new Date(day.date + "T00:00:00Z");  // UTC parsing for consistency
+      const dayName = dateObj.toLocaleDateString('en', { weekday: 'short', timeZone: 'UTC' });
       cell.title = `${day.date}: ${day.count} food${day.count !== 1 ? 's' : ''} logged`;
       const label = document.createElement("span");
       label.className = "heatmap-label";
