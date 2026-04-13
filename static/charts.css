@@ -56,7 +56,9 @@ body {
 
 .tab-content.active {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
   animation: fadeIn 0.4s ease;
 }
 
@@ -577,9 +579,17 @@ body {
 
 /* Responsive */
 @media (max-width: 600px) {
-  /* Keep tab buttons horizontal on mobile */
+  /* Shrink tab buttons on mobile — keep them inline, don't hide */
   .tab-container {
-    display: none; /* hide tabs — both panels visible side-by-side */
+    gap: 8px;
+    margin: 10px auto 16px;
+    padding: 0 8px;
+    flex-wrap: nowrap;
+  }
+
+  .tab-btn {
+    padding: 9px 10px;
+    font-size: 12px;
   }
 
   /* Both panels visible side-by-side */
@@ -629,6 +639,13 @@ body {
 
   .streak-area {
     margin: 8px 0 0;
+  }
+
+  /* Keep heatmap popup on-screen on narrow viewports */
+  .heatmap-popup {
+    min-width: 0;
+    width: max-content;
+    max-width: calc(100vw - 30px);
   }
 }
 
