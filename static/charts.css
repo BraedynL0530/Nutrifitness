@@ -577,25 +577,61 @@ body {
 
 /* Responsive */
 @media (max-width: 600px) {
+  /* Keep tab buttons horizontal on mobile */
   .tab-container {
+    display: none; /* hide tabs — both panels visible side-by-side */
+  }
+
+  /* Both panels visible side-by-side */
+  .panels-wrapper {
+    display: flex;
+    flex-direction: row;
+    gap: 8px;
+    width: 100%;
+    max-width: 100%;
+    align-items: flex-start;
+    box-sizing: border-box;
+  }
+
+  .panels-wrapper .tab-content,
+  .panels-wrapper .tab-content.active {
+    display: flex !important;
+    flex: 1;
+    min-width: 0;
     flex-direction: column;
-    gap: 10px;
-    padding: 0 10px;
+    align-items: stretch;
+    justify-content: flex-start;
   }
 
-  .weight-number {
-    font-size: 42px;
-  }
-
-  .prediction-number {
-    font-size: 36px;
+  .dashboard-container {
+    padding: 10px 8px;
+    max-width: 100%;
   }
 
   .dashboard,
   .weight-dashboard {
     max-width: 100%;
   }
+
+  .weight-number {
+    font-size: 36px;
+  }
+
+  .prediction-number {
+    font-size: 30px;
+  }
+
+  .weight-card,
+  .ml-prediction-card,
+  .weight-history-card {
+    padding: 12px 10px;
+  }
+
+  .streak-area {
+    margin: 8px 0 0;
+  }
 }
+
 /* Guest mode banner */
 .guest-banner {
   background: rgba(155, 89, 182, 0.18);
@@ -615,45 +651,69 @@ body {
   text-decoration: underline;
 }
 
-/* Streak Card */
-.streak-card {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  background: rgba(155, 89, 182, 0.18);
-  border: 1px solid rgba(176, 132, 247, 0.4);
-  border-radius: 14px;
-  padding: 12px 18px;
-  margin: 12px auto 0;
-  max-width: 400px;
+/* Streak Area (wraps badge + heatmap popup) */
+.streak-area {
+  position: relative;
   width: 100%;
+  max-width: 400px;
   box-sizing: border-box;
+  margin: 12px auto 0;
 }
 
-.streak-flame {
-  font-size: 28px;
+/* Streak Badge - compact emoji + number */
+.streak-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(155, 89, 182, 0.22);
+  border: 1px solid rgba(176, 132, 247, 0.45);
+  border-radius: 20px;
+  padding: 5px 12px;
+  font-size: 20px;
+  font-weight: 700;
+  color: #f7c948;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.15s;
+  user-select: none;
 }
 
-.streak-info {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-  flex: 1;
+.streak-badge:hover {
+  background: rgba(155, 89, 182, 0.35);
+  transform: scale(1.05);
 }
 
-.streak-number {
-  font-size: 32px;
+.streak-badge span {
+  font-size: 20px;
   font-weight: 700;
   color: #f7c948;
 }
 
-.streak-label {
-  font-size: 14px;
-  color: #c9b3e8;
+/* Heatmap Popup (dropdown shown on streak click) */
+.heatmap-popup {
+  display: none;
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 50;
+  background: linear-gradient(145deg, #1a0825, #2a1035);
+  border: 1px solid rgba(176, 132, 247, 0.45);
+  border-radius: 14px;
+  padding: 12px 14px 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  min-width: 240px;
+  max-width: 340px;
+  box-sizing: border-box;
+}
+
+.heatmap-popup.open {
+  display: block;
+  animation: fadeIn 0.2s ease;
 }
 
 .restore-btn {
-  padding: 8px 14px;
+  display: block;
+  margin: 10px auto 0;
+  padding: 7px 14px;
   background: linear-gradient(135deg, #27ae60, #2ecc71);
   border: none;
   border-radius: 10px;
@@ -676,26 +736,49 @@ body {
   font-size: 11px;
 }
 
-/* 7-Day Heatmap */
-.heatmap-container {
-  margin: 10px auto 0;
-  max-width: 400px;
-  width: 100%;
-  box-sizing: border-box;
-  padding: 0 0 4px;
-}
-
 .heatmap-title {
-  font-size: 12px;
+  font-size: 11px;
   color: rgba(216, 180, 255, 0.6);
-  margin: 0 0 6px 2px;
+  margin: 0 0 6px 1px;
   text-align: left;
 }
 
 .heatmap-grid {
   display: flex;
-  gap: 6px;
+  gap: 5px;
   justify-content: space-between;
+}
+
+/* Macro Color Legend */
+.macro-legend {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: center;
+  margin: 4px 0 8px;
+  flex-wrap: wrap;
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: #c9b3e8;
+}
+
+.legend-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+/* Panels Wrapper — side-by-side on mobile */
+.panels-wrapper {
+  display: block;
+  width: 100%;
 }
 
 .heatmap-cell {
