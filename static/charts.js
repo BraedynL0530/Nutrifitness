@@ -338,7 +338,6 @@ document.addEventListener("DOMContentLoaded", () => {
         const res = await fetch(`/api/food-log/${logId}/`, { method: "DELETE" });
         if (res.ok) {
           showToast(`${name} removed from log.`);
-          li.remove();
           location.reload();
         } else {
           showToast("Failed to delete item.");
