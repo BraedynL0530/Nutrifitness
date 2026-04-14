@@ -1,3 +1,25 @@
+function showPantryToast(msg, duration) {
+  duration = duration || 3000;
+  var toast = document.getElementById('nf-toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'nf-toast';
+    toast.style.cssText = [
+      'position:fixed', 'bottom:76px', 'left:50%', 'transform:translateX(-50%)',
+      'background:rgba(26,8,37,0.97)', 'border:1px solid #8e44ad',
+      'border-radius:10px', 'padding:10px 18px', 'color:#d8b4ff',
+      'font-size:13px', 'z-index:2000', 'pointer-events:none',
+      'opacity:0', 'transition:opacity 0.3s', 'text-align:center',
+      'max-width:80vw'
+    ].join(';');
+    document.body.appendChild(toast);
+  }
+  toast.textContent = msg;
+  toast.style.opacity = '1';
+  clearTimeout(toast._timer);
+  toast._timer = setTimeout(function() { toast.style.opacity = '0'; }, duration);
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   // Load pantry items from Django data
   loadPantryItems();
@@ -209,6 +231,7 @@ document.addEventListener("DOMContentLoaded", () => {
     pantryData.forEach(item => {
       const card = document.createElement("div");
       card.className = "pantry-item";
+      card.setAttribute("data-pantry-id", item.id);
 
       card.innerHTML = `
         <h3 class="pantry-item-name">${item.name}</h3>
@@ -216,6 +239,24 @@ document.addEventListener("DOMContentLoaded", () => {
         <p class="pantry-item-info">Category: ${item.category || "N/A"}</p>
         <p class="pantry-item-info">Calories: ${item.calories || 0} kcal per 100g</p>
       `;
+
+      card.addEventListener("click", async () => {
+        if (!confirm(`Remove "${item.name}" from your pantry?`)) return;
+        try {
+          const res = await fetch(`/api/pantry-item/${item.id}/`, { method: "DELETE" });
+          if (res.ok) {
+            showPantryToast(`${item.name} removed from pantry.`);
+            card.remove();
+            if (container.querySelectorAll(".pantry-item").length === 0) {
+              container.innerHTML = '<p class="empty-message">Your pantry is empty. Scan or search items to add them!</p>';
+            }
+          } else {
+            showPantryToast("Failed to remove item.");
+          }
+        } catch (e) {
+          showPantryToast("Network error. Try again.");
+        }
+      });
 
       container.appendChild(card);
     });

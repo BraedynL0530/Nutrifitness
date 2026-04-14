@@ -112,7 +112,7 @@ def dashboard(request):
     except FitnessProfile.DoesNotExist:
         return redirect("questionnaire")
 
-    today = timezone.now().date()  # UTC date for consistency
+    today = timezone.localdate()  # User's local date
     last_week_start = today - timedelta(days=today.weekday() + 7)  # Last Monday
     WeeklySummary.create_from_daily_logs(profile, last_week_start)
 
@@ -204,6 +204,7 @@ def myPantry(request):
     pantry_data = []
     for item in pantry_items:
         pantry_data.append({
+            'id': item.id,
             'name': item.food.name,
             'brand': item.food.category,
             'category': item.food.category,
@@ -320,6 +321,32 @@ def saveItem(request):
             "success": True,
             "food_name": name,
         })
+
+@csrf_exempt
+@login_required(login_url='/login/')
+def deleteFoodLog(request, log_id):
+    if request.method == 'DELETE':
+        try:
+            log = DailyLog.objects.get(id=log_id, profile__user=request.user)
+            log.delete()
+            return JsonResponse({'success': True})
+        except DailyLog.DoesNotExist:
+            return JsonResponse({'error': 'Not found'}, status=404)
+    return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+
+@csrf_exempt
+@login_required(login_url='/login/')
+def deletePantryItem(request, item_id):
+    if request.method == 'DELETE':
+        try:
+            item = PantryItem.objects.get(id=item_id, profile__user=request.user)
+            item.delete()
+            return JsonResponse({'success': True})
+        except PantryItem.DoesNotExist:
+            return JsonResponse({'error': 'Not found'}, status=404)
+    return JsonResponse({'error': 'Method not allowed'}, status=405)
+
 
 @csrf_exempt
 def saveWeight(request):
