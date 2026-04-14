@@ -592,22 +592,18 @@ body {
     font-size: 12px;
   }
 
-  /* Both panels visible side-by-side */
+  /* Mobile: keep tab toggle working — only active tab is visible */
   .panels-wrapper {
-    display: flex;
-    flex-direction: row;
-    gap: 8px;
+    display: block;
     width: 100%;
-    max-width: 100%;
-    align-items: flex-start;
-    box-sizing: border-box;
   }
 
-  .panels-wrapper .tab-content,
+  .panels-wrapper .tab-content {
+    display: none;
+  }
+
   .panels-wrapper .tab-content.active {
-    display: flex !important;
-    flex: 1;
-    min-width: 0;
+    display: flex;
     flex-direction: column;
     align-items: stretch;
     justify-content: flex-start;
