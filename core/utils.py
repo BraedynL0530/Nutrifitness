@@ -282,7 +282,21 @@ def extractNutrients(recipe_text):
         "fat": 0,
     }
 
-    # Try to find a JSON code block in the text
+    # First try raw JSON at the end of the text (no code block)
+    json_match = re.search(r'\{[^{}]*"recipe_name"[^{}]*\}\s*$', recipe_text, re.DOTALL)
+    if json_match:
+        try:
+            data = json.loads(json_match.group(0))
+            result["recipe_name"] = data.get("recipe_name", result["recipe_name"])
+            result["calories"] = float(data.get("calories", 0) or 0)
+            result["protein"] = float(data.get("protein", 0) or 0)
+            result["carbs"] = float(data.get("carbs", 0) or 0)
+            result["fat"] = float(data.get("fat", 0) or 0)
+            return result
+        except (json.JSONDecodeError, ValueError):
+            pass
+
+    # Fallback: try to find a JSON code block in the text
     json_block = re.search(r'```json\s*(\{.*?\})\s*```', recipe_text, re.DOTALL | re.IGNORECASE)
     if json_block:
         try:
