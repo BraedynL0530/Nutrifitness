@@ -475,6 +475,25 @@ body {
   font-size: 14px;
 }
 
+.food-log-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.delete-food-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 4px 8px;
+  flex-shrink: 0;
+}
+
+.delete-food-btn:hover {
+  transform: scale(1.2);
+}
+
 /* Scanner Area */
 .scanner-area {
   text-align: center;

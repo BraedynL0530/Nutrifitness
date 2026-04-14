@@ -332,7 +332,8 @@ document.addEventListener("DOMContentLoaded", () => {
       const li = e.target.closest("li[data-log-id]");
       if (!li) return;
       const logId = li.getAttribute("data-log-id");
-      const name = li.textContent.split("—")[0].trim();
+      const span = li.querySelector("span");
+      const name = (span ? span.textContent : li.textContent).split("—")[0].trim();
       if (!confirm(`Delete "${name}" from today's log?`)) return;
       try {
         const res = await fetch(`/api/food-log/${logId}/`, { method: "DELETE" });

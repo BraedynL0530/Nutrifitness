@@ -307,3 +307,71 @@ class WeightUnitTests(TestCase):
         # 165 lbs * 0.453592 = 74.84 kg
         self.assertAlmostEqual(self.profile.weightKg, 74.84, places=1)
         self.assertEqual(self.profile.weight_unit_preference, 'lbs')
+
+
+class DailyFoodsTimezoneTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username='tzuser', password='testpass123'
+        )
+        self.profile = FitnessProfile.objects.create(
+            user=self.user, heightCm=175, weightKg=70,
+            sex='male', tdee=2000
+        )
+        self.food = FoodItem.objects.create(
+            name='Test Food',
+            calories=100.0,
+            protein=5.0,
+            fat=2.0,
+            carbs=10.0,
+        )
+
+    def test_get_daily_foods_uses_local_date_multiple_timezones(self):
+        """Test that get_daily_foods returns today's foods in the user's local timezone, not yesterday's."""
+        import pytz
+        from datetime import timedelta
+
+        timezones = [
+            'US/Eastern',
+            'US/Pacific',
+            'Asia/Tokyo',
+            'Australia/Sydney',
+        ]
+
+        for tz_name in timezones:
+            with timezone.override(pytz.timezone(tz_name)):
+                DailyLog.objects.filter(profile=self.profile).delete()
+
+                today = timezone.localdate()
+                yesterday = today - timedelta(days=1)
+
+                # Create food log for TODAY
+                log_today = DailyLog.objects.create(
+                    profile=self.profile,
+                    food=self.food,
+                    quantity=1.0,
+                    date=today
+                )
+
+                # Create food log for YESTERDAY (should not appear)
+                log_yesterday = DailyLog.objects.create(
+                    profile=self.profile,
+                    food=self.food,
+                    quantity=1.0,
+                    date=yesterday
+                )
+
+                # Get daily foods for TODAY
+                foods = DailyLog.get_daily_foods(self.profile, today)
+
+                self.assertEqual(len(foods), 1, f"Failed for {tz_name}: expected 1 food, got {len(foods)}")
+                self.assertEqual(foods[0]['name'], self.food.name, f"Failed for {tz_name}: wrong food name")
+                self.assertIn('id', foods[0], f"Failed for {tz_name}: missing id field")
+
+                # Get daily foods for YESTERDAY
+                foods_yesterday = DailyLog.get_daily_foods(self.profile, yesterday)
+                self.assertEqual(len(foods_yesterday), 1, f"Failed for {tz_name}: expected 1 yesterday food, got {len(foods_yesterday)}")
+                self.assertNotEqual(
+                    foods[0]['id'], foods_yesterday[0]['id'],
+                    f"Failed for {tz_name}: today and yesterday IDs should differ"
+                )
