@@ -430,16 +430,6 @@ def aiRecipe(request):
                 "error": "Failed to generate recipe. Try again."
             }, status=500)
 
-        # Validate the recipe doesn't hallucinate non-pantry ingredients
-        is_valid, violations = utils.validateRecipeIngredients(recipe, ingredients)
-        if not is_valid:
-            print(f"⚠️ Recipe validation failed - hallucinated ingredients: {violations}")
-            return JsonResponse({
-                "error": "AI generated a recipe with ingredients not in your pantry. Please try again.",
-                "violations": violations,
-                "needs_regeneration": True,
-            }, status=422)
-
         nutrients = utils.extractNutrients(recipe)
         # Strip the trailing JSON line from the displayed recipe text
         import re
