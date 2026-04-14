@@ -49,8 +49,8 @@ class FitnessProfile(models.Model):
         WeightLog.objects.create(profile=self, weight=new_weight)
 
     def update_streak(self):
-        """Update streak when user logs food (UTC dates)."""
-        today = timezone.now().date()
+        """Update streak when user logs food (local dates)."""
+        today = timezone.localdate()
         yesterday = today - timedelta(days=1)
 
         if self.streak_last_logged is None:
@@ -77,7 +77,7 @@ class FitnessProfile(models.Model):
         if self.streak_last_logged is None:
             return
 
-        today = timezone.now().date()
+        today = timezone.localdate()
         yesterday = today - timedelta(days=1)
 
         if self.streak_last_logged < yesterday:
@@ -91,7 +91,7 @@ class FitnessProfile(models.Model):
         """Return the visually meaningful streak count (0 if broken)."""
         if self.streak_last_logged is None:
             return 0
-        today = timezone.now().date()
+        today = timezone.localdate()
         yesterday = today - timedelta(days=1)
         if self.streak_last_logged >= yesterday:
             return self.streak_count
@@ -104,7 +104,7 @@ class FitnessProfile(models.Model):
         if not self.streak_broken_date:
             return False
 
-        today = timezone.now().date()
+        today = timezone.localdate()
         yesterday = today - timedelta(days=1)
 
         # The first missed day must be yesterday
@@ -123,7 +123,7 @@ class FitnessProfile(models.Model):
         if not self.can_restore_streak():
             return False
 
-        today = timezone.now().date()
+        today = timezone.localdate()
 
         if self.streak_last_logged == today:
             # User already logged today: restore pre-break count + 1 for today
@@ -182,7 +182,7 @@ class DailyLog(models.Model):
     profile = models.ForeignKey(FitnessProfile, on_delete=models.CASCADE, related_name="daily_logs")
     food = models.ForeignKey(FoodItem, on_delete=models.CASCADE)
     quantity = models.FloatField(default=1.0)
-    date = models.DateField(auto_now_add=True)
+    date = models.DateField(default=timezone.localdate)
     meal_type = models.CharField(
         max_length=20,
         choices=[
@@ -230,6 +230,7 @@ class DailyLog(models.Model):
 
         for log in logs:
             foods.append({
+                'id': log.id,
                 'name': log.food.name,
                 'calories': (log.food.calories or 0) * log.quantity,
                 'quantity': log.quantity,

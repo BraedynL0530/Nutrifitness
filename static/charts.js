@@ -267,8 +267,8 @@ document.addEventListener("DOMContentLoaded", () => {
       cell.style.background = day.count === 0
         ? "rgba(155,89,182,0.1)"
         : `rgba(176,132,247,${intensity})`;
-      // Short date label (Mon, Tue...) — parse as UTC to avoid timezone shift
-      const dateObj = new Date(day.date + "T00:00:00Z");  // UTC midnight, then convert to local weekday
+      // Short date label (Mon, Tue...) — parse as local time
+      const dateObj = new Date(day.date + "T00:00:00");  // local midnight
       const dayName = dateObj.toLocaleDateString('en', { weekday: 'short' });
       cell.title = `${day.date}: ${day.count} food${day.count !== 1 ? 's' : ''} logged`;
       const label = document.createElement("span");
@@ -323,6 +323,29 @@ document.addEventListener("DOMContentLoaded", () => {
   // ---------- Guest food log (override bar + list) ----------
   if (typeof IS_GUEST !== 'undefined' && IS_GUEST) {
     applyGuestFoodLog();
+  }
+
+  // ---------- Food log delete (click item to delete) ----------
+  const foodLogEl = document.getElementById("foodLog");
+  if (foodLogEl && !(typeof IS_GUEST !== 'undefined' && IS_GUEST)) {
+    foodLogEl.addEventListener("click", async (e) => {
+      const li = e.target.closest("li[data-log-id]");
+      if (!li) return;
+      const logId = li.getAttribute("data-log-id");
+      const name = li.textContent.split("—")[0].trim();
+      if (!confirm(`Delete "${name}" from today's log?`)) return;
+      try {
+        const res = await fetch(`/api/food-log/${logId}/`, { method: "DELETE" });
+        if (res.ok) {
+          showToast(`${name} removed from log.`);
+          location.reload();
+        } else {
+          showToast("Failed to delete item.");
+        }
+      } catch (e) {
+        showToast("Network error. Try again.");
+      }
+    });
   }
 
   // ---------- Weight chart ----------

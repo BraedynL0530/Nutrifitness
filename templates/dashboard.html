@@ -92,7 +92,7 @@
               <h3>Food Eaten Today</h3>
               <ul id="foodLog">
                 {% for food in foodsData %}
-                    <li>{{ food.name }} — {{ food.calories|floatformat:0 }} kcal</li>
+                    <li data-log-id="{{ food.id }}" class="food-log-item">{{ food.name }} — {{ food.calories|floatformat:0 }} kcal</li>
                 {% endfor %}
                 </ul>
           </div>
