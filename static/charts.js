@@ -462,7 +462,7 @@ document.addEventListener("DOMContentLoaded", () => {
     bottomNavAdd.addEventListener("click", () => {
       scanOverlay.classList.add("show");
       if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-        navigator.mediaDevices.getUserMedia({ video: true })
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
           .then(stream => { video.srcObject = stream; })
           .catch(err => {
             console.error("Camera denied:", err);
