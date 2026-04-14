@@ -267,8 +267,8 @@ document.addEventListener("DOMContentLoaded", () => {
       cell.style.background = day.count === 0
         ? "rgba(155,89,182,0.1)"
         : `rgba(176,132,247,${intensity})`;
-      // Short date label (Mon, Tue...) — parse as local time
-      const dateObj = new Date(day.date + "T12:00:00");  // noon local time avoids DST edge cases
+      // Short date label (Mon, Tue...) — parse as UTC to avoid timezone shift
+      const dateObj = new Date(day.date + "T00:00:00Z");  // UTC midnight, then convert to local weekday
       const dayName = dateObj.toLocaleDateString('en', { weekday: 'short' });
       cell.title = `${day.date}: ${day.count} food${day.count !== 1 ? 's' : ''} logged`;
       const label = document.createElement("span");
