@@ -28,7 +28,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function startCamera() {
     if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-      navigator.mediaDevices.getUserMedia({ video: true })
+      navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
         .then(stream => { video.srcObject = stream; })
         .catch(err => {
           console.error("Camera access denied:", err);
