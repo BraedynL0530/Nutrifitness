@@ -230,6 +230,7 @@ def generateRecipe(ingredients, allergies, diet):
     prompt = (
         f"You are a recipe generator. You MUST create a recipe using ONLY these exact ingredients: [{ingredient_list}].\n\n"
         f"You do not have to use all ingredients but you may not add your own"
+        f"You do not need to use everything: ex user has fetichunni whitesauce,chicken,and rice. suggest alfreado dont suggest alfredo with a side of rice"
         f"STRICT RULES - violating any rule means failure:\n"
         f"1. Use ONLY ingredients from the list above. Do NOT add any ingredient not in this list.\n"
         f"2. Do NOT add proteins (chicken, beef, salmon, eggs, etc.) unless explicitly listed.\n"
