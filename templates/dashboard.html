@@ -37,6 +37,7 @@
   <div class="tab-container" id="tabContainer">
     <button class="tab-btn active" data-tab="food">Food Tracking</button>
     <button class="tab-btn" data-tab="weight">Weight Log</button>
+    <button class="tab-btn" data-tab="grocery">Grocery List</button>
   </div>
 
   <div class="panels-wrapper">
@@ -85,6 +86,7 @@
               <div id="bar-fill"></div>
             </div>
             <p id="calorieText"></p>
+            <p id="remainingText"></p>
           </div>
 
           <!-- 3. Food log at bottom -->
@@ -93,11 +95,21 @@
               <ul id="foodLog">
                 {% for food in foodsData %}
                     <li data-log-id="{{ food.id }}" class="food-log-item">
+                      <input type="checkbox" class="food-select-cb" data-log-id="{{ food.id }}"
+                             style="margin-right:8px; accent-color:#8e44ad; cursor:pointer;">
                       <span>{{ food.name }} — {{ food.calories|floatformat:0 }} kcal</span>
                       <button class="delete-food-btn" data-log-id="{{ food.id }}" title="Delete">🗑️</button>
                     </li>
                 {% endfor %}
                 </ul>
+              {% if foodsData %}
+              <button id="deleteSelectedBtn"
+                      style="display:none; margin-top:8px; padding:7px 14px;
+                             background:#8e44ad; border:none; border-radius:8px;
+                             color:white; cursor:pointer; font-size:13px; font-weight:600;">
+                🗑️ Delete Selected
+              </button>
+              {% endif %}
           </div>
 
         </div>
@@ -145,6 +157,55 @@
           <canvas id="weightChart" width="320" height="200"></canvas>
         </div>
 
+      </div>
+    </div>
+  </div>
+
+<!-- Grocery List Tab -->
+  <div class="tab-content" id="grocery-tab">
+    <div class="dashboard-container" style="max-width:460px;">
+      <div style="width:100%;">
+        <h2 style="color:#d8b4ff; text-align:center; margin-bottom:16px;">🛒 Weekly Grocery List</h2>
+
+        <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:16px;">
+          <div style="display:flex; gap:8px; align-items:center;">
+            <label style="color:#9b7acf; min-width:60px;">Goal:</label>
+            <select id="groceryGoal"
+                    style="flex:1; padding:8px; border:2px solid #8e44ad; border-radius:8px;
+                           background:rgba(155,89,182,0.1); color:#d8b4ff;">
+              <option value="maintain">Maintain</option>
+              <option value="lose">Lose Weight</option>
+              <option value="gain">Gain Muscle</option>
+            </select>
+          </div>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <label style="color:#9b7acf; min-width:60px;">Diet:</label>
+            <select id="groceryDiet"
+                    style="flex:1; padding:8px; border:2px solid #8e44ad; border-radius:8px;
+                           background:rgba(155,89,182,0.1); color:#d8b4ff;">
+              <option value="">None</option>
+              <option value="vegan">Vegan</option>
+              <option value="vegetarian">Vegetarian</option>
+              <option value="keto">Keto</option>
+              <option value="paleo">Paleo</option>
+              <option value="gluten-free">Gluten-Free</option>
+            </select>
+          </div>
+          <button onclick="fetchGroceryList()"
+                  style="padding:10px; background:linear-gradient(135deg,#9b59b6,#8e44ad);
+                         border:none; border-radius:8px; color:white; font-weight:600;
+                         cursor:pointer; font-size:15px;">
+            Generate List
+          </button>
+        </div>
+
+        <div id="groceryResults" style="margin-bottom:12px;"></div>
+
+        <button id="exportCsvBtn" onclick="exportGroceryCSV()" style="display:none;
+                padding:8px 16px; background:rgba(155,89,182,0.2); border:2px solid #8e44ad;
+                border-radius:8px; color:#d8b4ff; cursor:pointer; font-size:13px; font-weight:600;">
+          ⬇️ Export CSV
+        </button>
       </div>
     </div>
   </div>

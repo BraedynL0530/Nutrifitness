@@ -161,6 +161,8 @@ class FoodItem(models.Model):
     micros = models.JSONField(default=dict, blank=True)  # vitamins, minerals, etc.
     allergens = models.JSONField(default=list, blank=True)
     last_updated = models.DateTimeField(auto_now=True)
+    portion_size = models.FloatField(default=100.0)  # default serving size in grams
+    unit = models.CharField(max_length=20, default='g')  # g, oz, serving, etc.
 
     def __str__(self):
         return self.name
