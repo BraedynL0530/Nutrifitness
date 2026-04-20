@@ -49,7 +49,7 @@ def lookup_barcode(barcode):
             }
         # Cache expired — fall through to refresh via API
     except FoodItem.DoesNotExist:
-        item = None
+        pass
 
     # 2. OFF API
     food_data = readFoodData(barcode)
@@ -57,7 +57,6 @@ def lookup_barcode(barcode):
         return {"found": False, "source": None, "data": None}
 
     nutrients = food_data.get("nutrients", {})
-    # Upsert the cached item
     defaults = {
         "name": food_data.get("name", "Unknown"),
         "category": food_data.get("category", ""),
@@ -70,13 +69,7 @@ def lookup_barcode(barcode):
         "is_cached": True,
         "cached_at": timezone.now(),
     }
-    if item is not None:
-        # Update expired cache entry
-        for field, value in defaults.items():
-            setattr(item, field, value)
-        item.save()
-    else:
-        item, _ = FoodItem.objects.update_or_create(barcode=barcode, defaults=defaults)
+    item, _ = FoodItem.objects.update_or_create(barcode=barcode, defaults=defaults)
 
     return {
         "found": True,
