@@ -152,7 +152,7 @@ class WeightLog(models.Model):
 
 class FoodItem(models.Model):
     name = models.CharField(max_length=200)
-    barcode = models.CharField(max_length=50, unique=True, null=True, blank=True)
+    barcode = models.CharField(max_length=50, unique=True, null=True, blank=True, db_index=True)
     category = models.CharField(max_length=100, blank=True)
     calories = models.FloatField(null=True, blank=True)
     protein = models.FloatField(null=True, blank=True)
@@ -163,6 +163,8 @@ class FoodItem(models.Model):
     last_updated = models.DateTimeField(auto_now=True)
     portion_size = models.FloatField(default=100.0)  # default serving size in grams
     unit = models.CharField(max_length=20, default='g')  # g, oz, serving, etc.
+    cached_at = models.DateTimeField(null=True, blank=True)  # timestamp when barcode was cached
+    is_cached = models.BooleanField(default=False)  # flag if this is a cached barcode result
 
     def __str__(self):
         return self.name

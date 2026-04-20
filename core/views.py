@@ -232,6 +232,25 @@ def uploadBarcode(request):
 
     return JsonResponse({"barcode": barcode})
 
+
+@csrf_exempt
+def searchBarcode(request):
+    """POST /api/food/search-barcode/ — look up a barcode with 30-day local caching."""
+    if request.method != "POST":
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+
+    try:
+        data = json.loads(request.body)
+    except (json.JSONDecodeError, ValueError):
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
+
+    barcode = data.get("barcode", "").strip()
+    if not barcode:
+        return JsonResponse({"error": "barcode is required"}, status=400)
+
+    result = utils.lookup_barcode(barcode)
+    return JsonResponse(result)
+
 def searchFood(request):
     profile = FitnessProfile.objects.get(user=request.user)
 

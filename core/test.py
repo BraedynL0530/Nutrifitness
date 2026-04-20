@@ -475,3 +475,193 @@ class FoodItemPortionSizeTests(TestCase):
         )
         self.assertEqual(food.portion_size, 30.0)
         self.assertEqual(food.unit, 'oz')
+
+
+class BarcodeCacheTests(TestCase):
+    """Tests for the 30-day barcode caching feature."""
+
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(username='barcodeuser', password='testpass123')
+        self.client.login(username='barcodeuser', password='testpass123')
+
+    # --- is_cache_valid helper ---
+
+    def test_cache_valid_recent(self):
+        from core import utils
+        cached_at = timezone.now() - timezone.timedelta(days=1)
+        self.assertTrue(utils.is_cache_valid(cached_at))
+
+    def test_cache_valid_exactly_30_days(self):
+        from core import utils
+        # Exactly 30 days old is NOT valid (timedelta comparison is strict <)
+        cached_at = timezone.now() - timezone.timedelta(days=30)
+        self.assertFalse(utils.is_cache_valid(cached_at))
+
+    def test_cache_invalid_expired(self):
+        from core import utils
+        cached_at = timezone.now() - timezone.timedelta(days=31)
+        self.assertFalse(utils.is_cache_valid(cached_at))
+
+    def test_cache_invalid_none(self):
+        from core import utils
+        self.assertFalse(utils.is_cache_valid(None))
+
+    # --- lookup_barcode: local DB cache hit ---
+
+    def test_lookup_barcode_cache_hit(self):
+        from core import utils
+        food = FoodItem.objects.create(
+            name='Cached Food', barcode='111222333',
+            calories=100.0, protein=5.0, carbs=10.0, fat=2.0,
+            is_cached=True, cached_at=timezone.now() - timezone.timedelta(days=1)
+        )
+        result = utils.lookup_barcode('111222333')
+        self.assertTrue(result['found'])
+        self.assertEqual(result['source'], 'cache')
+        self.assertEqual(result['data']['name'], 'Cached Food')
+        self.assertEqual(result['data']['barcode'], '111222333')
+
+    # --- lookup_barcode: barcode not found anywhere ---
+
+    def test_lookup_barcode_not_found(self):
+        from core import utils
+        from unittest.mock import patch
+        with patch('core.utils.readFoodData', return_value=None):
+            result = utils.lookup_barcode('000000000000')
+        self.assertFalse(result['found'])
+        self.assertIsNone(result['source'])
+        self.assertIsNone(result['data'])
+
+    # --- lookup_barcode: cache miss → OFF API ---
+
+    def test_lookup_barcode_cache_miss_calls_off(self):
+        from core import utils
+        from unittest.mock import patch
+        mock_food = {
+            'name': 'Test Bar',
+            'category': 'Snacks',
+            'allergens': [],
+            'nutrients': {
+                'calories_kcal': 200.0,
+                'proteins_g': 4.0,
+                'fat_g': 8.0,
+                'carbohydrates_g': 30.0,
+            },
+            'micronutrients': {},
+        }
+        with patch('core.utils.readFoodData', return_value=mock_food) as mock_api:
+            result = utils.lookup_barcode('999888777')
+            mock_api.assert_called_once_with('999888777')
+        self.assertTrue(result['found'])
+        self.assertEqual(result['source'], 'off')
+        self.assertEqual(result['data']['name'], 'Test Bar')
+        # Should have been saved to DB
+        self.assertTrue(FoodItem.objects.filter(barcode='999888777', is_cached=True).exists())
+
+    # --- lookup_barcode: cache expired → re-fetches OFF API ---
+
+    def test_lookup_barcode_cache_expired_refetches(self):
+        from core import utils
+        from unittest.mock import patch
+        food = FoodItem.objects.create(
+            name='Old Food', barcode='777666555',
+            calories=50.0, protein=1.0, carbs=5.0, fat=1.0,
+            is_cached=True, cached_at=timezone.now() - timezone.timedelta(days=31)
+        )
+        mock_food = {
+            'name': 'Updated Food',
+            'category': '',
+            'allergens': [],
+            'nutrients': {
+                'calories_kcal': 110.0,
+                'proteins_g': 3.0,
+                'fat_g': 4.0,
+                'carbohydrates_g': 15.0,
+            },
+            'micronutrients': {},
+        }
+        with patch('core.utils.readFoodData', return_value=mock_food) as mock_api:
+            result = utils.lookup_barcode('777666555')
+            mock_api.assert_called_once_with('777666555')
+        self.assertTrue(result['found'])
+        self.assertEqual(result['source'], 'off')
+        self.assertEqual(result['data']['name'], 'Updated Food')
+        food.refresh_from_db()
+        # cached_at should be refreshed (within last minute)
+        self.assertTrue(utils.is_cache_valid(food.cached_at))
+
+    # --- OFF API response parsing ---
+
+    def test_off_api_response_parsing(self):
+        from core import utils
+        product = {
+            'product_name': 'Sample Cracker',
+            'brands': 'BrandCo',
+            'categories': 'Crackers',
+            'allergens_tags': ['en:gluten'],
+            'nutriments': {
+                'energy-kcal_100g': 450.0,
+                'proteins_100g': 8.0,
+                'fat_100g': 18.0,
+                'carbohydrates_100g': 62.0,
+            }
+        }
+        parsed = utils.simplifyFoodData(product, 'test123')
+        self.assertEqual(parsed['name'], 'Sample Cracker')
+        self.assertAlmostEqual(parsed['nutrients']['calories_kcal'], 450.0)
+        self.assertAlmostEqual(parsed['nutrients']['proteins_g'], 8.0)
+        self.assertAlmostEqual(parsed['nutrients']['fat_g'], 18.0)
+        self.assertAlmostEqual(parsed['nutrients']['carbohydrates_g'], 62.0)
+
+    # --- API endpoint ---
+
+    def test_search_barcode_endpoint_cache_hit(self):
+        FoodItem.objects.create(
+            name='Endpoint Food', barcode='ENDPOINT1',
+            calories=200.0, protein=10.0, carbs=20.0, fat=5.0,
+            is_cached=True, cached_at=timezone.now() - timezone.timedelta(days=1)
+        )
+        res = self.client.post(
+            '/api/food/search-barcode/',
+            data='{"barcode": "ENDPOINT1"}',
+            content_type='application/json'
+        )
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertTrue(data['found'])
+        self.assertEqual(data['source'], 'cache')
+        self.assertEqual(data['data']['name'], 'Endpoint Food')
+
+    def test_search_barcode_endpoint_missing_barcode(self):
+        res = self.client.post(
+            '/api/food/search-barcode/',
+            data='{}',
+            content_type='application/json'
+        )
+        self.assertEqual(res.status_code, 400)
+
+    def test_search_barcode_endpoint_not_found(self):
+        from unittest.mock import patch
+        with patch('core.utils.readFoodData', return_value=None):
+            res = self.client.post(
+                '/api/food/search-barcode/',
+                data='{"barcode": "NOTEXIST999"}',
+                content_type='application/json'
+            )
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertFalse(data['found'])
+
+    def test_search_barcode_endpoint_invalid_json(self):
+        res = self.client.post(
+            '/api/food/search-barcode/',
+            data='not-json',
+            content_type='application/json'
+        )
+        self.assertEqual(res.status_code, 400)
+
+    def test_search_barcode_endpoint_method_not_allowed(self):
+        res = self.client.get('/api/food/search-barcode/')
+        self.assertEqual(res.status_code, 405)
+

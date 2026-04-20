@@ -4,6 +4,7 @@ from . import views
 
 urlpatterns = [
     path('upload-barcode/', views.uploadBarcode, name='upload-barcode'),
+    path('food/search-barcode/', views.searchBarcode, name='search-barcode'),
     path('food-search/', views.searchFood, name='food-search'),
     path('food-log/', views.saveFood, name='food-log'),
     path('food-log/<int:log_id>/', views.deleteFoodLog, name='delete-food-log'),
