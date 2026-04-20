@@ -337,6 +337,24 @@ def deleteFoodLog(request, log_id):
 
 @csrf_exempt
 @login_required(login_url='/login/')
+def bulkDeleteFoodLog(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            ids = data.get('ids', [])
+            if not ids:
+                return JsonResponse({'error': 'No IDs provided'}, status=400)
+            deleted, _ = DailyLog.objects.filter(
+                id__in=ids, profile__user=request.user
+            ).delete()
+            return JsonResponse({'success': True, 'deleted': deleted})
+        except Exception:
+            return JsonResponse({'error': 'Failed to delete items.'}, status=400)
+    return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+
+@csrf_exempt
+@login_required(login_url='/login/')
 def deletePantryItem(request, item_id):
     if request.method == 'DELETE':
         try:
@@ -420,6 +438,24 @@ def check_rate_limit(user_id, action, is_premium):
 
     cache.set(key, current + 1, timeout=86400)  # resets every day
     return True
+
+
+@csrf_exempt
+@login_required(login_url='/login/')
+def generateGroceryList(request):
+    if request.method == 'GET':
+        try:
+            profile = FitnessProfile.objects.get(user=request.user)
+        except FitnessProfile.DoesNotExist:
+            return JsonResponse({'error': 'Profile not found'}, status=404)
+
+        goal = request.GET.get('goal', profile.goal or 'maintain')
+        diet = request.GET.get('diet', profile.diet or '')
+        allergies = profile.allergies or {}
+
+        grocery_list = utils.generateGroceryList(goal, diet, allergies)
+        return JsonResponse({'grocery_list': grocery_list, 'goal': goal, 'diet': diet})
+    return JsonResponse({'error': 'Method not allowed'}, status=405)
 
 
 @csrf_exempt

@@ -278,6 +278,12 @@ body {
   font-weight: 500;
 }
 
+#remainingText {
+  margin-top: 4px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
 /* Overlays with improved animations */
 .overlay {
   position: fixed;

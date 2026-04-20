@@ -159,6 +159,8 @@ def searchUSDA(query):
                 "barcode": f.get("gtinUpc") or f"usda_{f.get('fdcId')}",
                 "category": f.get("foodCategory", ""),
                 "allergens": [],
+                "portion_size": 100.0,
+                "unit": "g",
                 "nutrients": {
                     "calories_kcal": nutrients.get("Energy", 0),
                     "proteins_g": nutrients.get("Protein", 0),
@@ -192,6 +194,8 @@ def simplifyFoodData(product,barcode):
         "barcode": barcode,
         "category": product.get("categories", "Unknown"),
         "allergens": product.get("allergens_tags", []),
+        "portion_size": 100.0,
+        "unit": "g",
         "nutrients": {
             "calories_kcal": product.get("nutriments", {}).get("energy-kcal_100g"),
             "fat_g": product.get("nutriments", {}).get("fat_100g"),
@@ -214,6 +218,88 @@ def simplifyFoodData(product,barcode):
 #later feature
 def generateFitnessPlan(x,y):
     return
+
+GROCERY_TEMPLATES = {
+    "gain": {
+        "proteins": ["chicken breast", "ground beef (93% lean)", "eggs", "Greek yogurt", "cottage cheese", "canned tuna", "salmon"],
+        "carbs": ["oats", "brown rice", "whole wheat bread", "sweet potatoes", "bananas", "pasta", "quinoa"],
+        "fats": ["peanut butter", "almonds", "avocado", "olive oil", "walnuts"],
+        "vegetables": ["spinach", "broccoli", "bell peppers", "carrots", "mixed greens"],
+        "fruits": ["bananas", "apples", "blueberries", "oranges"],
+        "dairy": ["whole milk", "cheddar cheese", "Greek yogurt"],
+    },
+    "lose": {
+        "proteins": ["chicken breast", "turkey breast", "eggs", "Greek yogurt (non-fat)", "canned tuna", "shrimp", "tofu"],
+        "carbs": ["oats", "brown rice", "sweet potatoes", "lentils", "chickpeas"],
+        "fats": ["avocado", "almonds", "olive oil", "chia seeds"],
+        "vegetables": ["spinach", "broccoli", "cauliflower", "zucchini", "cucumbers", "celery", "kale", "bell peppers"],
+        "fruits": ["berries", "apples", "grapefruit", "watermelon"],
+        "dairy": ["Greek yogurt (non-fat)", "skim milk", "cottage cheese (low-fat)"],
+    },
+    "maintain": {
+        "proteins": ["chicken breast", "eggs", "Greek yogurt", "canned tuna", "salmon", "turkey"],
+        "carbs": ["oats", "brown rice", "whole wheat bread", "potatoes", "quinoa"],
+        "fats": ["avocado", "olive oil", "almonds", "peanut butter"],
+        "vegetables": ["spinach", "broccoli", "mixed greens", "tomatoes", "bell peppers", "carrots"],
+        "fruits": ["apples", "bananas", "berries", "oranges"],
+        "dairy": ["Greek yogurt", "milk", "cheese"],
+    },
+}
+
+DIET_EXCLUSIONS = {
+    "vegan": ["chicken breast", "ground beef", "eggs", "Greek yogurt", "cottage cheese",
+              "canned tuna", "salmon", "turkey", "shrimp", "whole milk", "cheddar cheese",
+              "skim milk", "milk", "cheese", "turkey breast", "Greek yogurt (non-fat)",
+              "cottage cheese (low-fat)", "Greek yogurt"],
+    "vegetarian": ["chicken breast", "ground beef", "canned tuna", "salmon", "turkey",
+                   "shrimp", "turkey breast"],
+    "keto": ["oats", "brown rice", "whole wheat bread", "sweet potatoes", "bananas",
+             "pasta", "quinoa", "lentils", "chickpeas", "potatoes"],
+    "paleo": ["oats", "brown rice", "whole wheat bread", "pasta", "lentils", "chickpeas",
+              "quinoa", "whole milk", "cheddar cheese", "skim milk", "milk", "cheese",
+              "Greek yogurt", "Greek yogurt (non-fat)", "cottage cheese", "cottage cheese (low-fat)"],
+    "gluten-free": ["whole wheat bread", "pasta", "oats"],
+}
+
+def generateGroceryList(goal, diet, allergies):
+    """Generate a weekly grocery list based on goal, diet, and allergies (no external API)."""
+    goal_key = goal.lower() if goal.lower() in GROCERY_TEMPLATES else "maintain"
+    template = GROCERY_TEMPLATES[goal_key]
+
+    exclusions = set()
+    if diet:
+        diet_lower = diet.lower()
+        for diet_type, excluded in DIET_EXCLUSIONS.items():
+            if diet_type in diet_lower:
+                exclusions.update(excluded)
+
+    if allergies:
+        # FitnessProfile.allergies is stored as a dict (keys are allergen names) or list;
+        # normalise to a flat list of lower-case strings.
+        allergy_lower = [a.lower() for a in (allergies if isinstance(allergies, list) else list(allergies.keys()))]
+        for allergen in allergy_lower:
+            if "nut" in allergen or "peanut" in allergen:
+                exclusions.update(["peanut butter", "almonds", "walnuts"])
+            if "dairy" in allergen or "milk" in allergen or "lactose" in allergen:
+                exclusions.update(["whole milk", "skim milk", "milk", "cheese", "cheddar cheese",
+                                   "Greek yogurt", "Greek yogurt (non-fat)", "cottage cheese",
+                                   "cottage cheese (low-fat)"])
+            if "egg" in allergen:
+                exclusions.add("eggs")
+            if "gluten" in allergen or "wheat" in allergen:
+                exclusions.update(["whole wheat bread", "pasta", "oats"])
+            if "fish" in allergen or "seafood" in allergen:
+                exclusions.update(["canned tuna", "salmon", "shrimp"])
+            if "soy" in allergen:
+                exclusions.add("tofu")
+
+    grocery_list = {}
+    for category, items in template.items():
+        filtered = [item for item in items if item not in exclusions]
+        if filtered:
+            grocery_list[category] = filtered
+
+    return grocery_list
 
 def generateRecipe(ingredients, allergies, diet):
     if not ingredients:

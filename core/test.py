@@ -375,3 +375,103 @@ class DailyFoodsTimezoneTests(TestCase):
                     foods[0]['id'], foods_yesterday[0]['id'],
                     f"Failed for {tz_name}: today and yesterday IDs should differ"
                 )
+
+class BulkDeleteFoodLogTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(username='bulkuser', password='testpass123')
+        self.client.login(username='bulkuser', password='testpass123')
+        self.profile = FitnessProfile.objects.create(
+            user=self.user, heightCm=175, weightKg=70, sex='male', tdee=2000
+        )
+        self.food = FoodItem.objects.create(name='Test Food', calories=100.0)
+        self.log1 = DailyLog.objects.create(profile=self.profile, food=self.food, quantity=1.0)
+        self.log2 = DailyLog.objects.create(profile=self.profile, food=self.food, quantity=1.0)
+
+    def test_bulk_delete_selected(self):
+        res = self.client.post(
+            '/api/food-log/bulk-delete/',
+            data='{"ids": [' + str(self.log1.id) + ',' + str(self.log2.id) + ']}',
+            content_type='application/json'
+        )
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertTrue(data['success'])
+        self.assertEqual(DailyLog.objects.count(), 0)
+
+    def test_bulk_delete_empty_ids(self):
+        res = self.client.post(
+            '/api/food-log/bulk-delete/',
+            data='{"ids": []}',
+            content_type='application/json'
+        )
+        self.assertEqual(res.status_code, 400)
+        self.assertEqual(DailyLog.objects.count(), 2)
+
+    def test_bulk_delete_only_own_logs(self):
+        other_user = User.objects.create_user(username='otheruser2', password='testpass123')
+        other_profile = FitnessProfile.objects.create(
+            user=other_user, heightCm=170, weightKg=65, sex='female', tdee=1800
+        )
+        other_log = DailyLog.objects.create(profile=other_profile, food=self.food, quantity=1.0)
+        res = self.client.post(
+            '/api/food-log/bulk-delete/',
+            data='{"ids": [' + str(other_log.id) + ']}',
+            content_type='application/json'
+        )
+        self.assertEqual(res.status_code, 200)
+        # Other user's log should NOT be deleted
+        self.assertTrue(DailyLog.objects.filter(id=other_log.id).exists())
+
+
+class GroceryListTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(username='groceryuser', password='testpass123')
+        self.client.login(username='groceryuser', password='testpass123')
+        self.profile = FitnessProfile.objects.create(
+            user=self.user, heightCm=175, weightKg=70, sex='male',
+            tdee=2000, goal='lose', diet='vegetarian', allergies={}
+        )
+
+    def test_grocery_list_returns_data(self):
+        res = self.client.get('/api/grocery-list/?goal=lose&diet=vegetarian')
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertIn('grocery_list', data)
+        self.assertIsInstance(data['grocery_list'], dict)
+
+    def test_grocery_list_excludes_meat_for_vegetarian(self):
+        res = self.client.get('/api/grocery-list/?goal=maintain&diet=vegetarian')
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        proteins = data['grocery_list'].get('proteins', [])
+        self.assertNotIn('chicken breast', proteins)
+        self.assertNotIn('canned tuna', proteins)
+
+    def test_grocery_list_unauthenticated(self):
+        self.client.logout()
+        res = self.client.get('/api/grocery-list/')
+        # Should redirect to login
+        self.assertNotEqual(res.status_code, 200)
+
+    def test_grocery_list_uses_profile_defaults(self):
+        # No explicit goal/diet in query; should use profile values
+        res = self.client.get('/api/grocery-list/')
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertIn('grocery_list', data)
+
+
+class FoodItemPortionSizeTests(TestCase):
+    def test_food_item_default_portion_size(self):
+        food = FoodItem.objects.create(name='Default Food', calories=100.0)
+        self.assertEqual(food.portion_size, 100.0)
+        self.assertEqual(food.unit, 'g')
+
+    def test_food_item_custom_portion_size(self):
+        food = FoodItem.objects.create(
+            name='Custom Food', calories=50.0, portion_size=30.0, unit='oz'
+        )
+        self.assertEqual(food.portion_size, 30.0)
+        self.assertEqual(food.unit, 'oz')

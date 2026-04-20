@@ -55,32 +55,46 @@ async function runFoodSearch() {
       container.innerHTML = '<p style="color:#9b7acf;">No results. Try manual entry.</p>';
       return;
     }
-    container.innerHTML = data.results.map((food, i) => `
-      <div style="background:rgba(155,89,182,0.15); border-radius:8px; 
+    container.innerHTML = data.results.map((food, i) => {
+      const portionSize = food.portion_size || 100;
+      const portionCals = ((food.nutrients?.calories_kcal || 0) * portionSize / 100).toFixed(0);
+      return `
+      <div style="background:rgba(155,89,182,0.15); border-radius:8px;
                   padding:10px; margin:6px 0; text-align:left;">
         <strong style="color:#d8b4ff;">${food.name || "Unknown"}</strong><br>
         <span style="color:#9b7acf; font-size:13px;">
-          ${food.nutrients?.calories_kcal || "?"} kcal | 
+          ${food.nutrients?.calories_kcal || "?"} kcal/100g | 
           P: ${food.nutrients?.proteins_g || "?"}g | 
           C: ${food.nutrients?.carbohydrates_g || "?"}g | 
           F: ${food.nutrients?.fat_g || "?"}g
         </span><br>
         <div style="display:flex; align-items:center; gap:8px; margin-top:8px;">
-          <input type="number" id="sg${i}" value="100" min="1"
-                 style="width:65px; padding:5px; border:1px solid #8e44ad; 
+          <input type="number" id="sg${i}" value="${portionSize}" min="1"
+                 style="width:65px; padding:5px; border:1px solid #8e44ad;
                         border-radius:6px; background:rgba(155,89,182,0.1); color:#d8b4ff;">
           <span style="color:#9b7acf; font-size:13px;">g</span>
           <button onclick='logSearchFood(${JSON.stringify(food).replace(/'/g, "&#39;")}, ${i})'
-                  style="flex:1; padding:6px; background:#8e44ad; border:none; 
+                  style="flex:1; padding:6px; background:#8e44ad; border:none;
                          border-radius:6px; color:white; cursor:pointer; font-weight:600;">
             Log
           </button>
+          <button onclick='quickLogFood(${JSON.stringify(food).replace(/'/g, "&#39;")})'
+                  title="Quick Log (1 serving = ${portionSize}g, ~${portionCals} kcal)"
+                  style="padding:6px 10px; background:rgba(155,89,182,0.3); border:1px solid #8e44ad;
+                         border-radius:6px; color:#d8b4ff; cursor:pointer; font-size:12px;">
+            ⚡ 1 serving
+          </button>
         </div>
       </div>
-    `).join("");
+    `}).join("");
   } catch (e) {
     container.innerHTML = '<p style="color:#ff6b6b;">Search failed. Try again.</p>';
   }
+}
+
+async function quickLogFood(food) {
+  const portionSize = food.portion_size || 100;
+  await logFoodToServer(food, portionSize);
 }
 
 async function logSearchFood(food, index) {
@@ -176,7 +190,15 @@ function applyGuestFoodLog() {
     if (fill) fill.style.width = percent + "%";
   }, 100);
   const calText = document.getElementById("calorieText");
-  if (calText) calText.innerText = `${Math.round(totalCals)} / ${goal} kcal`;
+  if (calText) calText.innerText = `${Math.round(totalCals)} / ${goal} kcal consumed`;
+  const remEl = document.getElementById("remainingText");
+  if (remEl) {
+    const rem = Math.round(goal - totalCals);
+    remEl.innerText = rem >= 0 ? `✅ ${rem} kcal remaining` : `⚠️ ${Math.abs(rem)} kcal over goal`;
+    remEl.style.color = rem >= 0 ? "#4caf7d" : "#ff6b6b";
+    remEl.style.fontWeight = "600";
+    remEl.style.fontSize = "13px";
+  }
 }
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -313,27 +335,48 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // ---------- Calorie bar ----------
   const goal = chartData.goal_calories;
-  const eaten = chartData.eaten_calories;
-  const percent = Math.min((eaten / goal) * 100, 100);
+  const eaten = chartData.eaten_calories || 0;
+  const remaining = Math.round((goal || 0) - eaten);
+  const percent = Math.min((eaten / (goal || 1)) * 100, 100);
   setTimeout(() => {
     document.getElementById("bar-fill").style.width = percent + "%";
   }, 100);
-  document.getElementById("calorieText").innerText = `${eaten} / ${goal} kcal`;
+  document.getElementById("calorieText").innerText = `${Math.round(eaten)} / ${goal} kcal consumed`;
+  const remainingEl = document.getElementById("remainingText");
+  if (remainingEl) {
+    remainingEl.innerText = remaining >= 0
+      ? `✅ ${remaining} kcal remaining`
+      : `⚠️ ${Math.abs(remaining)} kcal over goal`;
+    remainingEl.style.color = remaining >= 0 ? "#4caf7d" : "#ff6b6b";
+    remainingEl.style.fontWeight = "600";
+    remainingEl.style.fontSize = "13px";
+    remainingEl.style.marginTop = "4px";
+  }
 
   // ---------- Guest food log (override bar + list) ----------
   if (typeof IS_GUEST !== 'undefined' && IS_GUEST) {
     applyGuestFoodLog();
   }
 
-  // ---------- Food log delete (click item to delete) ----------
+  // ---------- Food log: checkbox selection + bulk delete ----------
   const foodLogEl = document.getElementById("foodLog");
+  const deleteSelectedBtn = document.getElementById("deleteSelectedBtn");
+
+  function updateDeleteSelectedBtn() {
+    if (!deleteSelectedBtn) return;
+    const checked = document.querySelectorAll(".food-select-cb:checked");
+    deleteSelectedBtn.style.display = checked.length > 0 ? "block" : "none";
+  }
+
   if (foodLogEl && !(typeof IS_GUEST !== 'undefined' && IS_GUEST)) {
+    // Individual 🗑️ button deletes
     foodLogEl.addEventListener("click", async (e) => {
-      const li = e.target.closest("li[data-log-id]");
-      if (!li) return;
-      const logId = li.getAttribute("data-log-id");
-      const span = li.querySelector("span");
-      const name = (span ? span.textContent : li.textContent).split("—")[0].trim();
+      const btn = e.target.closest(".delete-food-btn");
+      if (!btn) return;
+      const logId = btn.getAttribute("data-log-id");
+      const li = btn.closest("li[data-log-id]");
+      const span = li ? li.querySelector("span") : null;
+      const name = (span ? span.textContent : "").split("—")[0].trim();
       if (!confirm(`Delete "${name}" from today's log?`)) return;
       try {
         const res = await fetch(`/api/food-log/${logId}/`, { method: "DELETE" });
@@ -342,6 +385,36 @@ document.addEventListener("DOMContentLoaded", () => {
           location.reload();
         } else {
           showToast("Failed to delete item.");
+        }
+      } catch (e) {
+        showToast("Network error. Try again.");
+      }
+    });
+
+    // Checkbox change → show/hide "Delete Selected" button
+    foodLogEl.addEventListener("change", (e) => {
+      if (e.target.classList.contains("food-select-cb")) updateDeleteSelectedBtn();
+    });
+  }
+
+  // Bulk delete
+  if (deleteSelectedBtn) {
+    deleteSelectedBtn.addEventListener("click", async () => {
+      const checked = document.querySelectorAll(".food-select-cb:checked");
+      if (!checked.length) return;
+      const ids = Array.from(checked).map(cb => parseInt(cb.getAttribute("data-log-id")));
+      if (!confirm(`Delete ${ids.length} selected item(s)?`)) return;
+      try {
+        const res = await fetch("/api/food-log/bulk-delete/", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ids }),
+        });
+        if (res.ok) {
+          showToast(`${ids.length} item(s) removed.`);
+          location.reload();
+        } else {
+          showToast("Failed to delete items.");
         }
       } catch (e) {
         showToast("Network error. Try again.");
@@ -472,8 +545,21 @@ document.addEventListener("DOMContentLoaded", () => {
 
   document.querySelector(".bar-container").addEventListener("click", () => {
     calOverlay.classList.add("show");
-    document.getElementById("calDetails").innerHTML =
-      `You've consumed <strong>${eaten} calories</strong><br>out of your <strong>${goal} calorie</strong> goal today.`;
+    const rem = Math.round(goal - eaten);
+    const calDetailsEl = document.getElementById("calDetails");
+    calDetailsEl.textContent = "";
+    const line1 = document.createElement("span");
+    line1.innerHTML = `You've consumed <strong>${Math.round(eaten)} calories</strong><br>` +
+      `out of your <strong>${goal} calorie</strong> goal today.`;
+    const br = document.createElement("br");
+    const line2 = document.createElement("strong");
+    line2.textContent = rem >= 0
+      ? `✅ ${rem} kcal remaining`
+      : `⚠️ ${Math.abs(rem)} kcal over goal`;
+    line2.style.color = rem >= 0 ? "#4caf7d" : "#ff6b6b";
+    calDetailsEl.appendChild(line1);
+    calDetailsEl.appendChild(br);
+    calDetailsEl.appendChild(line2);
   });
 
   const video = document.getElementById("camera");
@@ -596,3 +682,71 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 });
+
+// ---- Grocery List Generator ----
+let _lastGroceryData = null;
+
+async function fetchGroceryList() {
+  const goal = document.getElementById("groceryGoal")?.value || "maintain";
+  const diet = document.getElementById("groceryDiet")?.value || "";
+  const resultsEl = document.getElementById("groceryResults");
+  const exportBtn = document.getElementById("exportCsvBtn");
+  if (!resultsEl) return;
+
+  resultsEl.innerHTML = '<p style="color:#9b7acf;">Generating list...</p>';
+  if (exportBtn) exportBtn.style.display = "none";
+
+  try {
+    const res = await fetch(`/api/grocery-list/?goal=${encodeURIComponent(goal)}&diet=${encodeURIComponent(diet)}`);
+    if (!res.ok) {
+      resultsEl.innerHTML = '<p style="color:#ff6b6b;">Failed to generate list. Please log in.</p>';
+      return;
+    }
+    const data = await res.json();
+    const groceryList = data.grocery_list || {};
+    _lastGroceryData = { goal: data.goal, diet: data.diet, list: groceryList };
+
+    if (Object.keys(groceryList).length === 0) {
+      resultsEl.innerHTML = '<p style="color:#9b7acf;">No items match your filters. Try adjusting diet or allergies.</p>';
+      return;
+    }
+
+    const categoryIcons = {
+      proteins: "🥩", carbs: "🌾", fats: "🥑", vegetables: "🥦", fruits: "🍎", dairy: "🥛"
+    };
+
+    resultsEl.innerHTML = Object.entries(groceryList).map(([category, items]) => `
+      <div style="margin-bottom:12px;">
+        <h4 style="color:#b084f7; margin:0 0 6px; text-transform:capitalize;">
+          ${categoryIcons[category] || "📦"} ${category}
+        </h4>
+        <ul style="margin:0; padding-left:18px;">
+          ${items.map(item => `<li style="color:#d8b4ff; font-size:14px; margin-bottom:3px;">${item}</li>`).join("")}
+        </ul>
+      </div>
+    `).join("");
+
+    if (exportBtn) exportBtn.style.display = "inline-block";
+  } catch (e) {
+    resultsEl.innerHTML = '<p style="color:#ff6b6b;">Error loading grocery list.</p>';
+  }
+}
+
+function exportGroceryCSV() {
+  if (!_lastGroceryData) return;
+  const { goal, diet, list } = _lastGroceryData;
+  const lines = [`Weekly Grocery List - Goal: ${goal}, Diet: ${diet || "None"}`, "Category,Item"];
+  for (const [category, items] of Object.entries(list)) {
+    for (const item of items) {
+      lines.push(`"${category}","${item}"`);
+    }
+  }
+  const csv = lines.join("\n");
+  const blob = new Blob([csv], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `grocery_list_${goal}${diet ? '_' + diet : ''}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
