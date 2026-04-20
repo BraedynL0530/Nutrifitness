@@ -251,6 +251,58 @@ def generateBarcode(name):
 
 
 @csrf_exempt
+@login_required(login_url='/login/')
+def searchBarcode(request):
+    """Multi-source barcode lookup with 30-day caching + auto-save to Pantry.
+
+    POST /api/food/search-barcode/
+    Body: {"barcode": "<barcode_string>"}
+
+    Lookup order:
+      1. Local DB (community-shared / previously cached, within 30 days)
+      2. Nutritionix API
+      3. Open Food Facts API (uses OFF_API_USER / OFF_API_PASS from env)
+
+    On success the food is automatically added to the authenticated user's
+    Pantry (if not already there).  No daily log entry is created.
+    """
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST only'}, status=405)
+
+    try:
+        data = json.loads(request.body)
+    except (json.JSONDecodeError, ValueError):
+        return JsonResponse({'error': 'Invalid JSON'}, status=400)
+
+    barcode = data.get('barcode', '').strip()
+    if not barcode:
+        return JsonResponse({'error': 'barcode required'}, status=400)
+
+    food_data, source = utils.lookupBarcode(barcode)
+
+    if not food_data:
+        return JsonResponse({
+            'found': False,
+            'message': 'Barcode not found. Please enter food details manually.',
+        }, status=404)
+
+    # Auto-add to the user's Pantry (idempotent – unique_together constraint)
+    try:
+        profile = FitnessProfile.objects.get(user=request.user)
+        food_obj = FoodItem.objects.filter(barcode=barcode).first()
+        if food_obj:
+            PantryItem.objects.get_or_create(profile=profile, food=food_obj)
+    except FitnessProfile.DoesNotExist:
+        pass  # Guest / unregistered – still return food data
+
+    return JsonResponse({
+        'found': True,
+        'source': source,
+        'data': food_data,
+    })
+
+
+@csrf_exempt
 def saveFood(request):
     if request.method == "POST":
         data = json.loads(request.body)

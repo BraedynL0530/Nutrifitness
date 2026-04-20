@@ -151,8 +151,15 @@ class WeightLog(models.Model):
         return f"{self.profile.user.username} - {self.weight}kg on {self.date}"
 
 class FoodItem(models.Model):
+    CACHE_SOURCE_CHOICES = [
+        ('local', 'Local'),
+        ('nutritionix', 'Nutritionix'),
+        ('off', 'Open Food Facts'),
+        ('manual', 'Manual'),
+    ]
+
     name = models.CharField(max_length=200)
-    barcode = models.CharField(max_length=50, unique=True, null=True, blank=True)
+    barcode = models.CharField(max_length=50, unique=True, null=True, blank=True, db_index=True)
     category = models.CharField(max_length=100, blank=True)
     calories = models.FloatField(null=True, blank=True)
     protein = models.FloatField(null=True, blank=True)
@@ -163,6 +170,12 @@ class FoodItem(models.Model):
     last_updated = models.DateTimeField(auto_now=True)
     portion_size = models.FloatField(default=100.0)  # default serving size in grams
     unit = models.CharField(max_length=20, default='g')  # g, oz, serving, etc.
+    cached_at = models.DateTimeField(null=True, blank=True)  # when barcode was last looked up
+    cache_source = models.CharField(
+        max_length=20,
+        choices=CACHE_SOURCE_CHOICES,
+        default='manual',
+    )
 
     def __str__(self):
         return self.name

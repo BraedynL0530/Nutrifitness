@@ -475,3 +475,182 @@ class FoodItemPortionSizeTests(TestCase):
         )
         self.assertEqual(food.portion_size, 30.0)
         self.assertEqual(food.unit, 'oz')
+
+
+class BarcodeCachingTests(TestCase):
+    """Tests for the multi-source barcode lookup and 30-day caching logic."""
+
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(username='barcodeuser', password='testpass123')
+        self.client.login(username='barcodeuser', password='testpass123')
+        self.profile = FitnessProfile.objects.create(
+            user=self.user, heightCm=175, weightKg=70, sex='male', tdee=2000
+        )
+
+    # ------------------------------------------------------------------ #
+    # Model field tests                                                    #
+    # ------------------------------------------------------------------ #
+    def test_fooditem_has_cached_at_field(self):
+        food = FoodItem.objects.create(
+            name='Cached Food',
+            barcode='TEST001',
+            calories=100.0,
+            cached_at=timezone.now(),
+            cache_source='off',
+        )
+        food.refresh_from_db()
+        self.assertIsNotNone(food.cached_at)
+        self.assertEqual(food.cache_source, 'off')
+
+    def test_fooditem_cache_source_default(self):
+        food = FoodItem.objects.create(name='Manual Food', calories=100.0)
+        self.assertEqual(food.cache_source, 'manual')
+
+    # ------------------------------------------------------------------ #
+    # lookupBarcode utility tests                                          #
+    # ------------------------------------------------------------------ #
+    def test_lookup_returns_local_cache_hit(self):
+        """If a fresh (< 30 days) local entry exists it should be returned."""
+        from core import utils as u
+        FoodItem.objects.create(
+            name='Cached Bar',
+            barcode='CACHE001',
+            calories=200.0,
+            protein=10.0,
+            fat=5.0,
+            carbs=25.0,
+            cached_at=timezone.now(),
+            cache_source='off',
+        )
+        result, source = u.lookupBarcode('CACHE001')
+        self.assertIsNotNone(result)
+        self.assertEqual(source, 'local')
+        self.assertEqual(result['name'], 'Cached Bar')
+
+    def test_lookup_ignores_expired_cache(self):
+        """An entry older than 30 days should not be returned as a cache hit."""
+        from core import utils as u
+        from datetime import timedelta
+        old_ts = timezone.now() - timedelta(days=31)
+        FoodItem.objects.create(
+            name='Stale Bar',
+            barcode='STALE001',
+            calories=150.0,
+            cached_at=old_ts,
+            cache_source='off',
+        )
+        # Without real API keys the fallback returns None – that's fine;
+        # the important thing is it did NOT return the stale local cache hit.
+        result, source = u.lookupBarcode('STALE001')
+        if result is not None:
+            self.assertNotEqual(source, 'local')
+
+    def test_lookup_no_cache_no_api_returns_none(self):
+        """Unknown barcode with no local entry and no API keys → None."""
+        from core import utils as u
+        result, source = u.lookupBarcode('UNKNOWN_BARCODE_XYZ')
+        self.assertIsNone(result)
+        self.assertIsNone(source)
+
+    # ------------------------------------------------------------------ #
+    # /api/food/search-barcode/ endpoint tests                            #
+    # ------------------------------------------------------------------ #
+    def test_search_barcode_missing_barcode(self):
+        res = self.client.post(
+            '/api/food/search-barcode/',
+            data='{}',
+            content_type='application/json',
+        )
+        self.assertEqual(res.status_code, 400)
+
+    def test_search_barcode_unknown_returns_404(self):
+        res = self.client.post(
+            '/api/food/search-barcode/',
+            data='{"barcode": "TOTALLY_UNKNOWN_9999"}',
+            content_type='application/json',
+        )
+        self.assertEqual(res.status_code, 404)
+        data = res.json()
+        self.assertFalse(data['found'])
+
+    def test_search_barcode_cache_hit_saves_to_pantry(self):
+        """A cached barcode lookup should auto-add the food to the user's pantry."""
+        from core.models import PantryItem
+        FoodItem.objects.create(
+            name='Pantry Food',
+            barcode='PANTRY001',
+            calories=120.0,
+            protein=8.0,
+            fat=3.0,
+            carbs=15.0,
+            cached_at=timezone.now(),
+            cache_source='off',
+        )
+        res = self.client.post(
+            '/api/food/search-barcode/',
+            data='{"barcode": "PANTRY001"}',
+            content_type='application/json',
+        )
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertTrue(data['found'])
+        self.assertEqual(data['source'], 'local')
+        # Food should now be in user's pantry
+        self.assertTrue(
+            PantryItem.objects.filter(
+                profile=self.profile,
+                food__barcode='PANTRY001',
+            ).exists()
+        )
+
+    def test_search_barcode_idempotent_pantry(self):
+        """Scanning the same barcode twice should not create duplicate pantry entries."""
+        from core.models import PantryItem
+        FoodItem.objects.create(
+            name='Dup Food',
+            barcode='DUP001',
+            calories=80.0,
+            cached_at=timezone.now(),
+            cache_source='off',
+        )
+        self.client.post(
+            '/api/food/search-barcode/',
+            data='{"barcode": "DUP001"}',
+            content_type='application/json',
+        )
+        self.client.post(
+            '/api/food/search-barcode/',
+            data='{"barcode": "DUP001"}',
+            content_type='application/json',
+        )
+        self.assertEqual(
+            PantryItem.objects.filter(profile=self.profile, food__barcode='DUP001').count(),
+            1,
+        )
+
+    def test_search_barcode_unauthenticated_redirects(self):
+        self.client.logout()
+        res = self.client.post(
+            '/api/food/search-barcode/',
+            data='{"barcode": "ANY001"}',
+            content_type='application/json',
+        )
+        # login_required decorator redirects unauthenticated requests
+        self.assertIn(res.status_code, [302, 403])
+
+    def test_search_barcode_does_not_create_daily_log(self):
+        """Barcode scan should add to pantry only – NOT create a DailyLog entry."""
+        FoodItem.objects.create(
+            name='No Log Food',
+            barcode='NOLOG001',
+            calories=100.0,
+            cached_at=timezone.now(),
+            cache_source='off',
+        )
+        self.client.post(
+            '/api/food/search-barcode/',
+            data='{"barcode": "NOLOG001"}',
+            content_type='application/json',
+        )
+        self.assertEqual(DailyLog.objects.count(), 0)

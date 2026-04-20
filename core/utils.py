@@ -64,11 +64,17 @@ def barcodeScanner(frame):
 
 def readFoodData(barcode):
     url = f"https://world.openfoodfacts.org/api/v2/product/{barcode}.json"
+    off_user = os.environ.get("OFF_API_USER", "")
+    off_pass = os.environ.get("OFF_API_PASS", "")
+    user_agent = "Nutrifitness - Mobile App - Version 1.0"
+    if off_user:
+        user_agent = f"Nutrifitness - Mobile App - Version 1.0 - {off_user}"
     headers = {
-        "User-Agent": "Nutrifitness - Mobile App - Version 1.0"
+        "User-Agent": user_agent,
     }
+    auth = (off_user, off_pass) if off_user and off_pass else None
     try:
-        res = requests.get(url, headers=headers, timeout=5)
+        res = requests.get(url, headers=headers, auth=auth, timeout=5)
         res.raise_for_status()
         data = res.json()
         if 'product' in data:
@@ -83,6 +89,133 @@ def readFoodData(barcode):
     except requests.RequestException as e:
         print(f"Error fetching data: {e}")
     return None
+
+
+def lookupBarcodeNutritonix(barcode):
+    """Query Nutritionix API for a barcode. Returns simplified food dict or None."""
+    app_id = os.environ.get("NUTRITIONIX_APP_ID", "")
+    app_key = os.environ.get("NUTRITIONIX_APP_KEY", "")
+    if not app_id or not app_key:
+        return None
+    url = "https://trackapi.nutritionix.com/v2/search/item"
+    headers = {
+        "x-app-id": app_id,
+        "x-app-key": app_key,
+        "Content-Type": "application/json",
+    }
+    try:
+        res = requests.get(url, params={"upc": barcode}, headers=headers, timeout=5)
+        if res.status_code != 200:
+            return None
+        data = res.json()
+        foods = data.get("foods", [])
+        if not foods:
+            return None
+        f = foods[0]
+        nutrients = f.get("full_nutrients", [])
+        # Map Nutritionix nutrient IDs to common names
+        nutrient_map = {208: "calories_kcal", 203: "proteins_g", 204: "fat_g", 205: "carbohydrates_g"}
+        parsed = {v: 0.0 for v in nutrient_map.values()}
+        for n in nutrients:
+            key = nutrient_map.get(n.get("attr_id"))
+            if key:
+                parsed[key] = n.get("value", 0.0)
+        return {
+            "name": f.get("food_name", "Unknown"),
+            "brand": f.get("brand_name", ""),
+            "barcode": barcode,
+            "category": "",
+            "allergens": [],
+            "portion_size": f.get("serving_weight_grams", 100.0),
+            "unit": "g",
+            "nutrients": parsed,
+            "micronutrients": {},
+        }
+    except Exception as e:
+        print(f"Nutritionix lookup error: {e}")
+        return None
+
+
+BARCODE_CACHE_DAYS = 30
+
+
+def lookupBarcode(barcode):
+    """Multi-source barcode lookup with 30-day caching.
+
+    Order: local DB cache → Nutritionix API → Open Food Facts API.
+    Saves new results to the local DB automatically.
+    Returns a (food_data_dict, cache_source) tuple, or (None, None) if not found.
+    """
+    from .models import FoodItem
+    from django.utils import timezone as tz
+
+    # 1. Check local DB (community shared + previously cached barcodes)
+    food = FoodItem.objects.filter(barcode=barcode).first()
+    if food and food.cached_at:
+        age = tz.now() - food.cached_at
+        if age.days < BARCODE_CACHE_DAYS:
+            return simplifyFoodData_from_model(food), 'local'
+        # Cache expired – fall through to re-fetch
+
+    # 2. Try Nutritionix
+    result = lookupBarcodeNutritonix(barcode)
+    if result:
+        _save_barcode_to_db(barcode, result, 'nutritionix')
+        return result, 'nutritionix'
+
+    # 3. Try Open Food Facts (with registered account credentials)
+    result = readFoodData(barcode)
+    if result:
+        _save_barcode_to_db(barcode, result, 'off')
+        return result, 'off'
+
+    return None, None
+
+
+def simplifyFoodData_from_model(food):
+    """Convert a FoodItem model instance to the standard food data dict."""
+    return {
+        "name": food.name,
+        "brand": "",
+        "barcode": food.barcode,
+        "category": food.category,
+        "allergens": food.allergens or [],
+        "portion_size": food.portion_size,
+        "unit": food.unit,
+        "nutrients": {
+            "calories_kcal": food.calories,
+            "proteins_g": food.protein,
+            "fat_g": food.fat,
+            "carbohydrates_g": food.carbs,
+        },
+        "micronutrients": food.micros or {},
+    }
+
+
+def _save_barcode_to_db(barcode, food_data, source):
+    """Persist barcode lookup result to the local DB for community caching."""
+    from .models import FoodItem
+    from django.utils import timezone as tz
+
+    nutrients = food_data.get("nutrients", {})
+    micronutrients = food_data.get("micronutrients", {})
+    FoodItem.objects.update_or_create(
+        barcode=barcode,
+        defaults={
+            "name": food_data.get("name", "Unknown"),
+            "category": food_data.get("category", ""),
+            "allergens": food_data.get("allergens", []),
+            "calories": nutrients.get("calories_kcal") or 0.0,
+            "protein": nutrients.get("proteins_g") or 0.0,
+            "fat": nutrients.get("fat_g") or 0.0,
+            "carbs": nutrients.get("carbohydrates_g") or 0.0,
+            "micros": micronutrients,
+            "portion_size": food_data.get("portion_size", 100.0),
+            "unit": food_data.get("unit", "g"),
+            "cached_at": tz.now(),
+            "cache_source": source,
+        }
+    )
 
 def searchFoods(query):
     url = "https://world.openfoodfacts.org/api/v2/search"
