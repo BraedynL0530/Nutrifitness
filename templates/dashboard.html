@@ -96,6 +96,7 @@
                 {% for food in foodsData %}
                     <li data-log-id="{{ food.id }}" class="food-log-item">
                       <input type="checkbox" class="food-select-cb" data-log-id="{{ food.id }}"
+                             aria-label="Select {{ food.name }} for deletion"
                              style="margin-right:8px; accent-color:#8e44ad; cursor:pointer;">
                       <span>{{ food.name }} — {{ food.calories|floatformat:0 }} kcal</span>
                       <button class="delete-food-btn" data-log-id="{{ food.id }}" title="Delete">🗑️</button>

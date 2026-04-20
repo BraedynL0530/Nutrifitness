@@ -348,8 +348,8 @@ def bulkDeleteFoodLog(request):
                 id__in=ids, profile__user=request.user
             ).delete()
             return JsonResponse({'success': True, 'deleted': deleted})
-        except Exception as e:
-            return JsonResponse({'error': str(e)}, status=400)
+        except Exception:
+            return JsonResponse({'error': 'Failed to delete items.'}, status=400)
     return JsonResponse({'error': 'Method not allowed'}, status=405)
 
 

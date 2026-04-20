@@ -274,6 +274,8 @@ def generateGroceryList(goal, diet, allergies):
                 exclusions.update(excluded)
 
     if allergies:
+        # FitnessProfile.allergies is stored as a dict (keys are allergen names) or list;
+        # normalise to a flat list of lower-case strings.
         allergy_lower = [a.lower() for a in (allergies if isinstance(allergies, list) else list(allergies.keys()))]
         for allergen in allergy_lower:
             if "nut" in allergen or "peanut" in allergen:

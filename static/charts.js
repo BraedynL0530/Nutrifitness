@@ -377,6 +377,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const li = btn.closest("li[data-log-id]");
       const span = li ? li.querySelector("span") : null;
       const name = (span ? span.textContent : "").split("—")[0].trim();
+      if (!confirm(`Delete "${name}" from today's log?`)) return;
       try {
         const res = await fetch(`/api/food-log/${logId}/`, { method: "DELETE" });
         if (res.ok) {
@@ -545,12 +546,20 @@ document.addEventListener("DOMContentLoaded", () => {
   document.querySelector(".bar-container").addEventListener("click", () => {
     calOverlay.classList.add("show");
     const rem = Math.round(goal - eaten);
-    const remStr = rem >= 0
-      ? `<strong style="color:#4caf7d;">${rem} kcal remaining</strong>`
-      : `<strong style="color:#ff6b6b;">${Math.abs(rem)} kcal over goal</strong>`;
-    document.getElementById("calDetails").innerHTML =
-      `You've consumed <strong>${Math.round(eaten)} calories</strong><br>` +
-      `out of your <strong>${goal} calorie</strong> goal today.<br><br>${remStr}`;
+    const calDetailsEl = document.getElementById("calDetails");
+    calDetailsEl.textContent = "";
+    const line1 = document.createElement("span");
+    line1.innerHTML = `You've consumed <strong>${Math.round(eaten)} calories</strong><br>` +
+      `out of your <strong>${goal} calorie</strong> goal today.`;
+    const br = document.createElement("br");
+    const line2 = document.createElement("strong");
+    line2.textContent = rem >= 0
+      ? `✅ ${rem} kcal remaining`
+      : `⚠️ ${Math.abs(rem)} kcal over goal`;
+    line2.style.color = rem >= 0 ? "#4caf7d" : "#ff6b6b";
+    calDetailsEl.appendChild(line1);
+    calDetailsEl.appendChild(br);
+    calDetailsEl.appendChild(line2);
   });
 
   const video = document.getElementById("camera");
@@ -675,7 +684,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 // ---- Grocery List Generator ----
-var _lastGroceryData = null;
+let _lastGroceryData = null;
 
 async function fetchGroceryList() {
   const goal = document.getElementById("groceryGoal")?.value || "maintain";
@@ -737,7 +746,7 @@ function exportGroceryCSV() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `grocery_list_${goal}.csv`;
+  a.download = `grocery_list_${goal}${diet ? '_' + diet : ''}.csv`;
   a.click();
   URL.revokeObjectURL(url);
 }
