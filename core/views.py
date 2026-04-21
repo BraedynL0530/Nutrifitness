@@ -195,6 +195,8 @@ def myPantry(request):
         return render(request, 'pantry.html', {
             'pantry_data': '[]',
             'is_guest': True,
+            'profile_goal': 'maintain',
+            'profile_diet': '',
         })
 
     profile = FitnessProfile.objects.get(user=request.user)
@@ -214,6 +216,8 @@ def myPantry(request):
     return render(request, 'pantry.html', {
         'pantry_data': json.dumps(pantry_data),
         'is_guest': False,
+        'profile_goal': profile.goal or 'maintain',
+        'profile_diet': profile.diet or '',
     })
 
 @csrf_exempt
@@ -260,7 +264,7 @@ def searchFood(request):
     query = request.GET.get("q", "").strip()
     if not query or len(query) < 2:
         return JsonResponse({"error": "Query too short"}, status=400)
-    results = utils.searchUSDA(query)
+    results = utils.searchFoods(query)
     return JsonResponse({"results": results})
 
 @csrf_exempt
