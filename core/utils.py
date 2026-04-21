@@ -6,8 +6,84 @@ from dotenv import load_dotenv
 import joblib
 import uuid
 import time
+from datetime import timedelta
+from django.utils import timezone
 from .models import WeeklySummary
 load_dotenv()
+
+CACHE_TTL_DAYS = 30
+
+
+def is_cache_valid(cached_at):
+    """Return True if cached_at is within 30 days of now."""
+    if cached_at is None:
+        return False
+    return timezone.now() - cached_at < timedelta(days=CACHE_TTL_DAYS)
+
+
+def lookup_barcode(barcode):
+    """
+    Look up a barcode: check local DB cache first, then OFF API.
+
+    Returns a dict with keys:
+        found (bool), data (dict or None), source ('cache' | 'off' | None)
+    """
+    from .models import FoodItem
+
+    # 1. Local DB lookup
+    try:
+        item = FoodItem.objects.get(barcode=barcode, is_cached=True)
+        if is_cache_valid(item.cached_at):
+            return {
+                "found": True,
+                "source": "cache",
+                "data": {
+                    "id": item.id,
+                    "name": item.name,
+                    "calories": item.calories,
+                    "protein": item.protein,
+                    "carbs": item.carbs,
+                    "fat": item.fat,
+                    "barcode": item.barcode,
+                },
+            }
+        # Cache expired — fall through to refresh via API
+    except FoodItem.DoesNotExist:
+        pass
+
+    # 2. OFF API
+    food_data = readFoodData(barcode)
+    if food_data is None:
+        return {"found": False, "source": None, "data": None}
+
+    nutrients = food_data.get("nutrients", {})
+    defaults = {
+        "name": food_data.get("name", "Unknown"),
+        "category": food_data.get("category", ""),
+        "allergens": food_data.get("allergens", []),
+        "calories": nutrients.get("calories_kcal"),
+        "protein": nutrients.get("proteins_g"),
+        "fat": nutrients.get("fat_g"),
+        "carbs": nutrients.get("carbohydrates_g"),
+        "micros": food_data.get("micronutrients", {}),
+        "is_cached": True,
+        "cached_at": timezone.now(),
+    }
+    item, _ = FoodItem.objects.update_or_create(barcode=barcode, defaults=defaults)
+
+    return {
+        "found": True,
+        "source": "off",
+        "data": {
+            "id": item.id,
+            "name": item.name,
+            "calories": item.calories,
+            "protein": item.protein,
+            "carbs": item.carbs,
+            "fat": item.fat,
+            "barcode": item.barcode,
+        },
+    }
 def calcBmi(weightKg, heightCm):
     heightMeter = heightCm / 100.0
     bmi = weightKg / (heightMeter * heightMeter)
@@ -65,7 +141,7 @@ def barcodeScanner(frame):
 def readFoodData(barcode):
     url = f"https://world.openfoodfacts.org/api/v2/product/{barcode}.json"
     headers = {
-        "User-Agent": "Nutrifitness - Mobile App - Version 1.0"
+        "User-Agent": "Nutrifitness - Android - Version 1.0 - https://nutrifitness.com"
     }
     try:
         res = requests.get(url, headers=headers, timeout=5)

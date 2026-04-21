@@ -195,6 +195,8 @@ def myPantry(request):
         return render(request, 'pantry.html', {
             'pantry_data': '[]',
             'is_guest': True,
+            'profile_goal': 'maintain',
+            'profile_diet': '',
         })
 
     profile = FitnessProfile.objects.get(user=request.user)
@@ -214,6 +216,8 @@ def myPantry(request):
     return render(request, 'pantry.html', {
         'pantry_data': json.dumps(pantry_data),
         'is_guest': False,
+        'profile_goal': profile.goal or 'maintain',
+        'profile_diet': profile.diet or '',
     })
 
 @csrf_exempt
@@ -232,6 +236,25 @@ def uploadBarcode(request):
 
     return JsonResponse({"barcode": barcode})
 
+
+@csrf_exempt
+def searchBarcode(request):
+    """POST /api/food/search-barcode/ — look up a barcode with 30-day local caching."""
+    if request.method != "POST":
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+
+    try:
+        data = json.loads(request.body)
+    except (json.JSONDecodeError, ValueError):
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
+
+    barcode = data.get("barcode", "").strip()
+    if not barcode:
+        return JsonResponse({"error": "barcode is required"}, status=400)
+
+    result = utils.lookup_barcode(barcode)
+    return JsonResponse(result)
+
 def searchFood(request):
     profile = FitnessProfile.objects.get(user=request.user)
 
@@ -241,7 +264,7 @@ def searchFood(request):
     query = request.GET.get("q", "").strip()
     if not query or len(query) < 2:
         return JsonResponse({"error": "Query too short"}, status=400)
-    results = utils.searchUSDA(query)
+    results = utils.searchFoods(query)
     return JsonResponse({"results": results})
 
 @csrf_exempt
