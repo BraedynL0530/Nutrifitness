@@ -873,3 +873,41 @@ body {
   background: linear-gradient(135deg, #9b59b6, #8e44ad);
   border-color: #b084f7;
 }
+
+/* Weight fluctuation note */
+.weight-fluctuation-note {
+  background: rgba(52, 152, 219, 0.12);
+  border: 1px solid rgba(52, 152, 219, 0.35);
+  border-radius: 10px;
+  color: #a8d8ea;
+  font-size: 13px;
+  line-height: 1.55;
+  padding: 10px 14px;
+  margin-bottom: 14px;
+  text-align: left;
+}
+
+/* TDEE adjusted note */
+.tdee-adjusted-note {
+  color: #7dcea0;
+  font-size: 12px;
+  text-align: center;
+  margin: 6px 0 0;
+}
+
+/* Calorie calculation note inside exercise overlay */
+.calorie-calc-note {
+  background: rgba(155, 89, 182, 0.12);
+  border: 1px solid rgba(142, 68, 173, 0.35);
+  border-radius: 10px;
+  color: #d8b4ff;
+  font-size: 13px;
+  line-height: 1.6;
+  padding: 10px 14px;
+  text-align: left;
+}
+
+.calorie-calc-note code {
+  font-family: monospace;
+  font-size: 12px;
+}

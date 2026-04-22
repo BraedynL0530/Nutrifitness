@@ -15,5 +15,6 @@ urlpatterns = [
     #path('ml-res/',views.habitToWeight, name='ml-res'),
     path('weight-log/', views.saveWeight, name='weight-log'),
     path('streak-restore/', views.restoreStreak, name='streak-restore'),
-    path('grocery-list/', views.generateGroceryList, name='grocery-list'),
+    path('exercise-log/', views.saveExerciseLog, name='exercise-log'),
+    path('exercise-log/<int:log_id>/', views.deleteExerciseLog, name='delete-exercise-log'),
 ]

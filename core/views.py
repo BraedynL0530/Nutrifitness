@@ -10,7 +10,7 @@ from django.contrib.auth.forms import UserCreationForm
 from django.views.decorators.csrf import csrf_exempt
 from datetime import timedelta
 from django.utils import timezone
-from .models import FitnessProfile, DailyLog, PantryItem,FoodItem,WeeklySummary, WeightLog
+from .models import FitnessProfile, DailyLog, PantryItem, FoodItem, WeeklySummary, WeightLog, ExerciseLog
 from . import utils
 import uuid
 from django.core.cache import cache
@@ -105,6 +105,10 @@ def dashboard(request):
             "weight_unit": "kg",
             "user": request.user,
             "is_guest": True,
+            "exerciseLogs": [],
+            "total_exercise_calories": 0,
+            "exercise_list": list(utils.EXERCISE_MET_TABLE.keys()),
+            "tdee_adjusted": False,
         })
 
     try:
@@ -144,7 +148,7 @@ def dashboard(request):
             "vitamin-C_mg": totals.get("vitamin-C_mg", 0),
             "vitamin-D_mg": totals.get("vitamin-D_mg", 0),
         },
-        "goal_calories": profile.tdee,
+        "goal_calories": profile.get_effective_tdee(),
         "eaten_calories": dailyCalories,
     }
 
@@ -159,6 +163,13 @@ def dashboard(request):
 
     foods = DailyLog.get_daily_foods(profile, today)
     foodsData = foods
+
+    # Today's exercise logs
+    exercise_logs = list(
+        ExerciseLog.objects.filter(profile=profile, date=today)
+        .values('id', 'exercise_name', 'duration_minutes', 'calories_burned')
+    )
+    total_exercise_calories = sum(e['calories_burned'] for e in exercise_logs)
 
     # 7-day activity heatmap
     heatmap_data = []
@@ -187,6 +198,10 @@ def dashboard(request):
         "weight_unit": profile.weight_unit_preference,
         "user": request.user,
         "is_guest": False,
+        "exerciseLogs": exercise_logs,
+        "total_exercise_calories": total_exercise_calories,
+        "exercise_list": list(utils.EXERCISE_MET_TABLE.keys()),
+        "tdee_adjusted": profile.tdee_override is not None,
     })
 
 
@@ -415,6 +430,8 @@ def saveWeight(request):
         if unit in ('kg', 'lbs'):
             profile.weight_unit_preference = unit
         profile.update_weight(weight)
+        # Auto-adjust TDEE based on weight trend + eating habits
+        utils.auto_adjust_tdee(profile)
         return JsonResponse({'status': 'success'})
     return None
 
@@ -465,19 +482,68 @@ def check_rate_limit(user_id, action, is_premium):
 
 @csrf_exempt
 @login_required(login_url='/login/')
-def generateGroceryList(request):
-    if request.method == 'GET':
+def saveExerciseLog(request):
+    """POST /api/exercise-log/ — log an exercise session and estimate calories burned."""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+        except (json.JSONDecodeError, ValueError):
+            return JsonResponse({'error': 'Invalid JSON'}, status=400)
+
+        exercise_name = data.get('exercise_name', '').strip()
+        duration_minutes = data.get('duration_minutes')
+        notes = data.get('notes', '')
+
+        if not exercise_name:
+            return JsonResponse({'error': 'exercise_name is required'}, status=400)
+
+        try:
+            duration_minutes = float(duration_minutes)
+        except (TypeError, ValueError):
+            return JsonResponse({'error': 'Invalid duration'}, status=400)
+
+        if duration_minutes <= 0 or duration_minutes > 600:
+            return JsonResponse({'error': 'Duration must be between 1 and 600 minutes'}, status=400)
+
         try:
             profile = FitnessProfile.objects.get(user=request.user)
         except FitnessProfile.DoesNotExist:
             return JsonResponse({'error': 'Profile not found'}, status=404)
 
-        goal = request.GET.get('goal', profile.goal or 'maintain')
-        diet = request.GET.get('diet', profile.diet or '')
-        allergies = profile.allergies or {}
+        weight_kg = profile.get_latest_weight() or profile.weightKg or 70
+        calories_burned, met_value = utils.calc_calories_burned(exercise_name, duration_minutes, weight_kg)
 
-        grocery_list = utils.generateGroceryList(goal, diet, allergies)
-        return JsonResponse({'grocery_list': grocery_list, 'goal': goal, 'diet': diet})
+        log = ExerciseLog.objects.create(
+            profile=profile,
+            exercise_name=exercise_name,
+            duration_minutes=duration_minutes,
+            calories_burned=calories_burned,
+            met_value=met_value,
+            notes=notes,
+        )
+
+        return JsonResponse({
+            'status': 'success',
+            'id': log.id,
+            'exercise_name': exercise_name,
+            'duration_minutes': duration_minutes,
+            'calories_burned': calories_burned,
+            'met_value': met_value,
+        })
+    return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+
+@csrf_exempt
+@login_required(login_url='/login/')
+def deleteExerciseLog(request, log_id):
+    """DELETE /api/exercise-log/<id>/ — remove an exercise log entry."""
+    if request.method == 'DELETE':
+        try:
+            log = ExerciseLog.objects.get(id=log_id, profile__user=request.user)
+            log.delete()
+            return JsonResponse({'success': True})
+        except ExerciseLog.DoesNotExist:
+            return JsonResponse({'error': 'Not found'}, status=404)
     return JsonResponse({'error': 'Method not allowed'}, status=405)
 
 

@@ -34,6 +34,13 @@ class FitnessProfile(models.Model):
     # Weight unit preference
     weight_unit_preference = models.CharField(max_length=5, default='kg')
 
+    # TDEE auto-adjustment (overrides calculated TDEE when set by the trend engine)
+    tdee_override = models.FloatField(null=True, blank=True)
+
+    def get_effective_tdee(self):
+        """Return the best available TDEE: auto-adjusted override or original."""
+        return self.tdee_override if self.tdee_override is not None else self.tdee
+
     def __str__(self):
         return self.user.username
 
@@ -149,6 +156,22 @@ class WeightLog(models.Model):
 
     def __str__(self):
         return f"{self.profile.user.username} - {self.weight}kg on {self.date}"
+
+class ExerciseLog(models.Model):
+    profile = models.ForeignKey(FitnessProfile, on_delete=models.CASCADE, related_name="exercise_logs")
+    exercise_name = models.CharField(max_length=100)
+    duration_minutes = models.FloatField()  # duration in minutes
+    calories_burned = models.FloatField()   # estimated kcal burned
+    met_value = models.FloatField(null=True, blank=True)  # MET used for calculation
+    date = models.DateField(auto_now_add=True)
+    notes = models.CharField(max_length=255, blank=True)
+
+    class Meta:
+        ordering = ['-date', '-id']
+
+    def __str__(self):
+        return f"{self.profile.user.username} - {self.exercise_name} ({self.duration_minutes} min) on {self.date}"
+
 
 class FoodItem(models.Model):
     name = models.CharField(max_length=200)

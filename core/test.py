@@ -1,6 +1,6 @@
 from django.test import TestCase, Client
 from django.contrib.auth.models import User
-from .models import FitnessProfile, WeightLog, DailyLog, FoodItem
+from .models import FitnessProfile, WeightLog, DailyLog, FoodItem, ExerciseLog
 from django.utils import timezone
 
 class AuthTests(TestCase):
@@ -424,43 +424,155 @@ class BulkDeleteFoodLogTests(TestCase):
         self.assertTrue(DailyLog.objects.filter(id=other_log.id).exists())
 
 
-class GroceryListTests(TestCase):
+class ExerciseLogTests(TestCase):
     def setUp(self):
         self.client = Client()
-        self.user = User.objects.create_user(username='groceryuser', password='testpass123')
-        self.client.login(username='groceryuser', password='testpass123')
+        self.user = User.objects.create_user(username='exerciseuser', password='testpass123')
+        self.client.login(username='exerciseuser', password='testpass123')
         self.profile = FitnessProfile.objects.create(
-            user=self.user, heightCm=175, weightKg=70, sex='male',
-            tdee=2000, goal='lose', diet='vegetarian', allergies={}
+            user=self.user, heightCm=175, weightKg=80, sex='male', tdee=2500
         )
+        WeightLog.objects.create(profile=self.profile, weight=80)
 
-    def test_grocery_list_returns_data(self):
-        res = self.client.get('/api/grocery-list/?goal=lose&diet=vegetarian')
+    def test_log_valid_exercise(self):
+        res = self.client.post(
+            '/api/exercise-log/',
+            data='{"exercise_name": "Running (6 mph / 10 min mile)", "duration_minutes": 30}',
+            content_type='application/json',
+        )
         self.assertEqual(res.status_code, 200)
         data = res.json()
-        self.assertIn('grocery_list', data)
-        self.assertIsInstance(data['grocery_list'], dict)
+        self.assertEqual(data['status'], 'success')
+        self.assertGreater(data['calories_burned'], 0)
+        self.assertEqual(ExerciseLog.objects.count(), 1)
 
-    def test_grocery_list_excludes_meat_for_vegetarian(self):
-        res = self.client.get('/api/grocery-list/?goal=maintain&diet=vegetarian')
+    def test_log_custom_exercise(self):
+        res = self.client.post(
+            '/api/exercise-log/',
+            data='{"exercise_name": "Zorbing", "duration_minutes": 20, "notes": "fun"}',
+            content_type='application/json',
+        )
         self.assertEqual(res.status_code, 200)
-        data = res.json()
-        proteins = data['grocery_list'].get('proteins', [])
-        self.assertNotIn('chicken breast', proteins)
-        self.assertNotIn('canned tuna', proteins)
+        log = ExerciseLog.objects.first()
+        self.assertIsNotNone(log)
+        self.assertEqual(log.exercise_name, 'Zorbing')
 
-    def test_grocery_list_unauthenticated(self):
-        self.client.logout()
+    def test_log_zero_duration_rejected(self):
+        res = self.client.post(
+            '/api/exercise-log/',
+            data='{"exercise_name": "Walking (moderate, 3 mph)", "duration_minutes": 0}',
+            content_type='application/json',
+        )
+        self.assertNotEqual(res.status_code, 200)
+        self.assertEqual(ExerciseLog.objects.count(), 0)
+
+    def test_log_missing_exercise_name_rejected(self):
+        res = self.client.post(
+            '/api/exercise-log/',
+            data='{"duration_minutes": 30}',
+            content_type='application/json',
+        )
+        self.assertEqual(res.status_code, 400)
+
+    def test_delete_exercise_log(self):
+        log = ExerciseLog.objects.create(
+            profile=self.profile,
+            exercise_name='Yoga',
+            duration_minutes=45,
+            calories_burned=100,
+        )
+        res = self.client.delete(f'/api/exercise-log/{log.id}/')
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(ExerciseLog.objects.count(), 0)
+
+    def test_grocery_list_route_removed(self):
+        """The grocery list endpoint should no longer exist."""
         res = self.client.get('/api/grocery-list/')
-        # Should redirect to login
+        self.assertEqual(res.status_code, 404)
+
+    def test_unauthenticated_exercise_log_redirects(self):
+        self.client.logout()
+        res = self.client.post(
+            '/api/exercise-log/',
+            data='{"exercise_name": "Yoga", "duration_minutes": 30}',
+            content_type='application/json',
+        )
         self.assertNotEqual(res.status_code, 200)
 
-    def test_grocery_list_uses_profile_defaults(self):
-        # No explicit goal/diet in query; should use profile values
-        res = self.client.get('/api/grocery-list/')
-        self.assertEqual(res.status_code, 200)
-        data = res.json()
-        self.assertIn('grocery_list', data)
+
+class TdeeAutoAdjustTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='tdeeuser', password='testpass123')
+        self.profile = FitnessProfile.objects.create(
+            user=self.user, heightCm=175, weightKg=80, sex='male', tdee=2500
+        )
+        self.food = FoodItem.objects.create(
+            name='Test Food', calories=100.0, protein=5.0, fat=2.0, carbs=10.0,
+        )
+
+    def _create_logs(self, days, daily_calories, weight_start, weight_end):
+        """Helper: create food + weight logs over `days` days."""
+        from datetime import timedelta
+        today = timezone.localdate()
+        for i in range(days):
+            day = today - timedelta(days=days - 1 - i)
+            # Food log
+            quantity = daily_calories / 100.0  # food has 100 kcal per 100g → quantity = servings
+            DailyLog.objects.create(profile=self.profile, food=self.food, quantity=quantity, date=day)
+            # Weight log: auto_now_add ignores the date kwarg, so we set it via update
+            w = weight_start + (weight_end - weight_start) * i / max(days - 1, 1)
+            log = WeightLog.objects.create(profile=self.profile, weight=round(w, 2))
+            WeightLog.objects.filter(pk=log.pk).update(date=day)
+
+    def test_no_adjustment_with_insufficient_data(self):
+        from core import utils
+        # Only 3 weight logs, below the 7-log minimum
+        from datetime import timedelta
+        today = timezone.localdate()
+        for i in range(3):
+            WeightLog.objects.create(profile=self.profile, weight=80, date=today - timedelta(days=i))
+        result = utils.auto_adjust_tdee(self.profile)
+        self.assertEqual(result, 2500)
+        self.assertIsNone(self.profile.tdee_override)
+
+    def test_adjustment_when_losing_faster_than_expected(self):
+        """If actual weight loss > predicted, TDEE is underestimated → should increase."""
+        from core import utils
+        # Eat 2000 kcal/day against a TDEE of 2500 → 500 kcal deficit → expect ~0.65 kg loss
+        # Simulate losing 1.5 kg over 10 days (more than expected) → real TDEE must be higher
+        self._create_logs(10, 2000, 80.0, 78.5)
+        self.profile.refresh_from_db()
+        result = utils.auto_adjust_tdee(self.profile)
+        self.assertGreater(result, 2500)
+
+    def test_adjustment_when_losing_slower_than_expected(self):
+        """If actual weight loss < predicted, TDEE is overestimated → should decrease."""
+        from core import utils
+        # Eat 2000 kcal/day, TDEE 2500, expect ~0.65 kg loss over 10 days
+        # Simulate only 0.05 kg loss → real TDEE must be lower
+        self._create_logs(10, 2000, 80.0, 79.95)
+        self.profile.refresh_from_db()
+        result = utils.auto_adjust_tdee(self.profile)
+        self.assertLess(result, 2500)
+
+    def test_no_adjustment_when_trend_matches(self):
+        """No adjustment when actual weight trend closely matches expected."""
+        from core import utils
+        # Eat 2000 kcal/day, TDEE 2500, expect ~0.065 kg/day × 10 days ≈ 0.65 kg loss
+        # Simulate losing ~0.65 kg over 10 days (matches expectation)
+        self._create_logs(10, 2000, 80.0, 79.35)
+        result = utils.auto_adjust_tdee(self.profile)
+        # Should not change TDEE (discrepancy < 150 kcal threshold)
+        self.assertIsNone(self.profile.tdee_override)
+
+    def test_effective_tdee_uses_override_when_set(self):
+        self.profile.tdee_override = 2300
+        self.profile.save()
+        self.assertEqual(self.profile.get_effective_tdee(), 2300)
+
+    def test_effective_tdee_falls_back_to_tdee(self):
+        self.assertIsNone(self.profile.tdee_override)
+        self.assertEqual(self.profile.get_effective_tdee(), 2500)
 
 
 class FoodItemPortionSizeTests(TestCase):
