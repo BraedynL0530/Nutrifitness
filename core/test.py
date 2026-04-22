@@ -527,10 +527,8 @@ class TdeeAutoAdjustTests(TestCase):
     def test_no_adjustment_with_insufficient_data(self):
         from core import utils
         # Only 3 weight logs, below the 7-log minimum
-        from datetime import timedelta
-        today = timezone.localdate()
         for i in range(3):
-            WeightLog.objects.create(profile=self.profile, weight=80, date=today - timedelta(days=i))
+            WeightLog.objects.create(profile=self.profile, weight=80)
         result = utils.auto_adjust_tdee(self.profile)
         self.assertEqual(result, 2500)
         self.assertIsNone(self.profile.tdee_override)

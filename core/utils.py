@@ -602,7 +602,7 @@ TDEE_MIN = 1200            # hard lower bound
 TDEE_MAX = 6000            # hard upper bound
 # Expected weight change per kcal deficit/surplus over 7 days (kg per 7 days per 500 kcal/day)
 # 1 lb of fat ≈ 3500 kcal → 0.454 kg per 3500 kcal ≈ 0.13 kg / 1000 kcal/day / week
-KG_PER_KCAL_WEEK = 0.454 / 3500  # kg lost per kcal of daily deficit
+KG_PER_KCAL = 0.454 / 3500  # kg lost per 1 kcal daily deficit (1 lb fat ≈ 3500 kcal)
 
 
 def auto_adjust_tdee(profile):
@@ -652,12 +652,12 @@ def auto_adjust_tdee(profile):
     effective_tdee = profile.get_effective_tdee() or 2000
     # Expected weight change given reported intake vs TDEE
     avg_daily_deficit = effective_tdee - avg_daily_calories  # positive = deficit
-    expected_weight_change = -avg_daily_deficit * num_days * KG_PER_KCAL_WEEK
+    expected_weight_change = -avg_daily_deficit * num_days * KG_PER_KCAL
 
     discrepancy_kg = actual_weight_change - expected_weight_change
     # Convert kg discrepancy to equivalent daily calorie discrepancy
     if num_days > 0:
-        discrepancy_kcal_per_day = discrepancy_kg / (num_days * KG_PER_KCAL_WEEK)
+        discrepancy_kcal_per_day = discrepancy_kg / (num_days * KG_PER_KCAL)
     else:
         return effective_tdee
 
