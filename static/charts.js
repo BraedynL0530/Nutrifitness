@@ -697,17 +697,17 @@ document.addEventListener("DOMContentLoaded", () => {
   async function handleDeleteExercise(e) {
     const btn = e.currentTarget;
     const id = btn.dataset.exerciseId;
+    const li = btn.closest("li");
+    const calories = parseFloat(li?.dataset.calories || 0);
     try {
       const res = await fetch(`/api/exercise-log/${id}/`, { method: "DELETE" });
       if (res.ok) {
-        const li = btn.closest("li");
         if (li) li.remove();
         // Update calorie display
         const calDisplay = document.getElementById("exerciseCalDisplay");
-        if (calDisplay) {
-          const burned = parseFloat(btn.closest("li")?.querySelector("span")?.textContent?.match(/(\d+\.?\d*)\s*kcal/)?.[ 1] || 0);
+        if (calDisplay && calories) {
           const current = parseFloat(calDisplay.textContent) || 0;
-          calDisplay.textContent = Math.max(0, Math.round(current - burned));
+          calDisplay.textContent = Math.max(0, Math.round(current - calories));
         }
       }
     } catch (err) { /* ignore */ }
@@ -751,6 +751,7 @@ document.addEventListener("DOMContentLoaded", () => {
           const li = document.createElement("li");
           li.className = "food-log-item";
           li.dataset.exerciseId = data.id;
+          li.dataset.calories = data.calories_burned;
           li.style.cssText = "display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(155,89,182,0.15);";
           li.innerHTML = `<span style="color:#d8b4ff;font-size:13px;">${data.exercise_name} — ${Math.round(data.duration_minutes)} min — ${data.calories_burned} kcal</span><button class="delete-exercise-btn" data-exercise-id="${data.id}" title="Delete" style="background:none;border:none;cursor:pointer;font-size:15px;">🗑️</button>`;
           list.appendChild(li);

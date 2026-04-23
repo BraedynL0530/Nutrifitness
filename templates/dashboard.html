@@ -117,7 +117,7 @@
             <h3>Exercise Today — <span id="exerciseCalDisplay">{{ total_exercise_calories|floatformat:0 }}</span> kcal burned</h3>
             <ul id="exerciseLogList" style="list-style:none; padding:0; margin:0;">
               {% for ex in exerciseLogs %}
-              <li class="food-log-item" data-exercise-id="{{ ex.id }}"
+              <li class="food-log-item" data-exercise-id="{{ ex.id }}" data-calories="{{ ex.calories_burned|floatformat:0 }}"
                   style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid rgba(155,89,182,0.15);">
                 <span style="color:#d8b4ff; font-size:13px;">{{ ex.exercise_name }} — {{ ex.duration_minutes|floatformat:0 }} min — {{ ex.calories_burned|floatformat:0 }} kcal</span>
                 <button class="delete-exercise-btn" data-exercise-id="{{ ex.id }}" title="Delete" style="background:none;border:none;cursor:pointer;font-size:15px;">🗑️</button>
@@ -280,7 +280,7 @@
 
     <!-- Exercise -->
     <div id="exerciseMode" style="display:none;">
-      <p style="color:#9b7acf; font-size:12px; margin:0 0 10px;">Calorie burn is estimated using MET values.</p>
+      <p style="color:#9b7acf; font-size:12px; margin:0 0 10px;">Calorie burn is estimated using MET (Metabolic Equivalent) values — a measure of exercise intensity.</p>
       <div style="display:flex; flex-direction:column; gap:8px;">
         <select id="exerciseSelect"
                 style="padding:10px; border:2px solid #8e44ad; border-radius:8px;
