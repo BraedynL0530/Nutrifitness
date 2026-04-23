@@ -37,9 +37,11 @@ function saveGuestFoodLog(items) {
 
 // ---- Food mode tabs ----
 function setFoodMode(mode) {
-  ["scan", "search", "manual"].forEach(m => {
-    document.getElementById(`${m}Mode`).style.display = m === mode ? "block" : "none";
-    document.getElementById(`btn-${m}`).classList.toggle("active", m === mode);
+  ["scan", "search", "manual", "exercise"].forEach(m => {
+    const el = document.getElementById(`${m}Mode`);
+    if (el) el.style.display = m === mode ? "block" : "none";
+    const btn = document.getElementById(`btn-${m}`);
+    if (btn) btn.classList.toggle("active", m === mode);
   });
 }
 
@@ -680,6 +682,94 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       }
     });
+  });
+
+  // ---------- Exercise Logging ----------
+  const exerciseSelect = document.getElementById("exerciseSelect");
+  const exerciseCustomName = document.getElementById("exerciseCustomName");
+
+  exerciseSelect?.addEventListener("change", () => {
+    if (exerciseCustomName) {
+      exerciseCustomName.style.display = exerciseSelect.value === "__custom__" ? "block" : "none";
+    }
+  });
+
+  async function handleDeleteExercise(e) {
+    const btn = e.currentTarget;
+    const id = btn.dataset.exerciseId;
+    const li = btn.closest("li");
+    const calories = parseFloat(li?.dataset.calories || 0);
+    try {
+      const res = await fetch(`/api/exercise-log/${id}/`, { method: "DELETE" });
+      if (res.ok) {
+        if (li) li.remove();
+        // Update calorie display
+        const calDisplay = document.getElementById("exerciseCalDisplay");
+        if (calDisplay && calories) {
+          const current = parseFloat(calDisplay.textContent) || 0;
+          calDisplay.textContent = Math.max(0, Math.round(current - calories));
+        }
+      }
+    } catch (err) { /* ignore */ }
+  }
+
+  document.querySelectorAll(".delete-exercise-btn").forEach(btn => {
+    btn.addEventListener("click", handleDeleteExercise);
+  });
+
+  document.getElementById("saveExerciseBtn")?.addEventListener("click", async () => {
+    const rawName = exerciseSelect && exerciseSelect.value === "__custom__"
+      ? (exerciseCustomName ? exerciseCustomName.value.trim() : "")
+      : (exerciseSelect ? exerciseSelect.value : "");
+    const duration = parseFloat(document.getElementById("exerciseDuration")?.value);
+    const notes = document.getElementById("exerciseNotes")?.value.trim() || "";
+    const resultEl = document.getElementById("exerciseResult");
+
+    if (!rawName) { if (resultEl) resultEl.textContent = "Please select or enter an exercise."; return; }
+    if (!duration || duration <= 0) { if (resultEl) resultEl.textContent = "Please enter a valid duration."; return; }
+
+    try {
+      const res = await fetch("/api/exercise-log/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ exercise_name: rawName, duration_minutes: duration, notes }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        if (resultEl) resultEl.textContent = `✅ Logged! ~${data.calories_burned} kcal burned.`;
+        // Update the displayed total
+        const calDisplay = document.getElementById("exerciseCalDisplay");
+        if (calDisplay) {
+          const current = parseFloat(calDisplay.textContent) || 0;
+          calDisplay.textContent = Math.round(current + data.calories_burned);
+        }
+        // Add entry to the exercise list
+        const list = document.getElementById("exerciseLogList");
+        const emptyMsg = list?.querySelector("li:not([data-exercise-id])");
+        if (emptyMsg) emptyMsg.remove();
+        if (list) {
+          const li = document.createElement("li");
+          li.className = "food-log-item";
+          li.dataset.exerciseId = data.id;
+          li.dataset.calories = data.calories_burned;
+          li.style.cssText = "display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(155,89,182,0.15);";
+          li.innerHTML = `<span style="color:#d8b4ff;font-size:13px;">${data.exercise_name} — ${Math.round(data.duration_minutes)} min — ${data.calories_burned} kcal</span><button class="delete-exercise-btn" data-exercise-id="${data.id}" title="Delete" style="background:none;border:none;cursor:pointer;font-size:15px;">🗑️</button>`;
+          list.appendChild(li);
+          li.querySelector(".delete-exercise-btn").addEventListener("click", handleDeleteExercise);
+        }
+        // Reset form
+        if (exerciseSelect) exerciseSelect.value = "";
+        if (exerciseCustomName) { exerciseCustomName.style.display = "none"; exerciseCustomName.value = ""; }
+        const durInput = document.getElementById("exerciseDuration");
+        if (durInput) durInput.value = "";
+        const notesInput = document.getElementById("exerciseNotes");
+        if (notesInput) notesInput.value = "";
+      } else {
+        if (resultEl) resultEl.textContent = data.error || "Failed to log exercise.";
+      }
+    } catch (err) {
+      if (resultEl) resultEl.textContent = "Error saving exercise.";
+    }
   });
 });
 

@@ -37,7 +37,6 @@
   <div class="tab-container" id="tabContainer">
     <button class="tab-btn active" data-tab="food">Food Tracking</button>
     <button class="tab-btn" data-tab="weight">Weight Log</button>
-    <button class="tab-btn" data-tab="exercise">Exercise</button>
   </div>
 
   <div class="panels-wrapper">
@@ -113,6 +112,22 @@
               {% endif %}
           </div>
 
+          <!-- Exercise summary (compact) -->
+          <div class="food-log-block" style="margin-top:12px;">
+            <h3>Exercise Today — <span id="exerciseCalDisplay">{{ total_exercise_calories|floatformat:0 }}</span> kcal burned</h3>
+            <ul id="exerciseLogList" style="list-style:none; padding:0; margin:0;">
+              {% for ex in exerciseLogs %}
+              <li class="food-log-item" data-exercise-id="{{ ex.id }}" data-calories="{{ ex.calories_burned|floatformat:0 }}"
+                  style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid rgba(155,89,182,0.15);">
+                <span style="color:#d8b4ff; font-size:13px;">{{ ex.exercise_name }} — {{ ex.duration_minutes|floatformat:0 }} min — {{ ex.calories_burned|floatformat:0 }} kcal</span>
+                <button class="delete-exercise-btn" data-exercise-id="{{ ex.id }}" title="Delete" style="background:none;border:none;cursor:pointer;font-size:15px;">🗑️</button>
+              </li>
+              {% empty %}
+              <li style="color:#9b7acf; font-size:13px; padding:6px 0;">No exercise today — tap + to log.</li>
+              {% endfor %}
+            </ul>
+          </div>
+
         </div>
       </div>
   </div>
@@ -165,103 +180,8 @@
     </div>
   </div>
 
-  <!-- Exercise Tab -->
-  <div class="tab-content" id="exercise-tab">
-    <div class="dashboard-container">
-      <div class="weight-dashboard">
-
-        <div class="weight-card">
-          <h2>Exercise Today</h2>
-          <div class="weight-display">
-            <span class="weight-number" id="exerciseCalDisplay">{{ total_exercise_calories|floatformat:0 }}</span>
-            <span class="weight-unit">kcal burned</span>
-          </div>
-          <button class="log-weight-btn" id="logExerciseBtn">Log Exercise</button>
-        </div>
-
-        <div class="weight-history-card" style="width:100%;">
-          <h2>Today's Exercise Log</h2>
-          <ul id="exerciseLogList" style="list-style:none; padding:0; margin:0;">
-            {% for ex in exerciseLogs %}
-            <li class="food-log-item" data-exercise-id="{{ ex.id }}"
-                style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid rgba(155,89,182,0.2);">
-              <span style="color:#d8b4ff;">{{ ex.exercise_name }} — {{ ex.duration_minutes|floatformat:0 }} min — {{ ex.calories_burned|floatformat:0 }} kcal</span>
-              <button class="delete-exercise-btn" data-exercise-id="{{ ex.id }}" title="Delete" style="background:none;border:none;cursor:pointer;font-size:16px;">🗑️</button>
-            </li>
-            {% empty %}
-            <li style="color:#b084f7; font-size:14px; padding:8px 0;">No exercise logged today. Tap "Log Exercise" to get started!</li>
-            {% endfor %}
-          </ul>
-        </div>
-
-        <div class="ml-prediction-card" style="font-size:13px; line-height:1.6;">
-          <h2>How Calorie Burn is Calculated</h2>
-          <p style="color:#d8b4ff;">
-            We use the <strong>MET formula</strong>:<br>
-            <code style="background:rgba(155,89,182,0.2); padding:3px 6px; border-radius:4px;">
-              Calories = MET × weight (kg) × time (hours)
-            </code>
-          </p>
-          <p style="color:#b084f7; margin-top:8px;">
-            MET (Metabolic Equivalent of Task) measures how much energy an activity uses compared to sitting at rest (1 MET). Running has a MET of ~9.8, while yoga is ~2.5. Your current body weight is factored in — heavier individuals burn more calories for the same activity.
-          </p>
-          <p style="color:#9b7ec8; margin-top:6px; font-size:12px;">
-            ⚠️ Estimates are averages. Actual calorie burn varies with fitness level, age, and effort.
-          </p>
-        </div>
-
-      </div>
-    </div>
-  </div>
-
 
   </div><!-- end panels-wrapper -->
-
-  <!-- Exercise Overlay -->
-  <div id="exerciseOverlay" class="overlay">
-    <div class="overlay-box">
-      <h2>Log Exercise</h2>
-
-      <div class="calorie-calc-note">
-        <strong>How calories burned are estimated:</strong><br>
-        We use the MET (Metabolic Equivalent of Task) formula:<br>
-        <code>Calories = MET × body weight (kg) × duration (hours)</code><br>
-        MET represents how hard an activity is relative to sitting at rest. Higher MET = more calories per minute. Estimates are based on average effort; actual burn varies by fitness level and intensity.
-      </div>
-
-      <div style="display:flex; flex-direction:column; gap:10px; margin-top:12px;">
-        <label style="color:#d8b4ff; font-size:13px;">Exercise</label>
-        <select id="exerciseSelect"
-                style="padding:10px; border:2px solid #8e44ad; border-radius:8px;
-                       background:rgba(155,89,182,0.15); color:#d8b4ff; font-size:14px;">
-          <option value="">— Select an exercise —</option>
-          {% for ex in exercise_list %}
-          <option value="{{ ex }}">{{ ex }}</option>
-          {% endfor %}
-          <option value="__custom__">Other (type below)</option>
-        </select>
-        <input type="text" id="exerciseCustomName" placeholder="Custom exercise name"
-               style="display:none; padding:10px; border:2px solid #8e44ad; border-radius:8px;
-                      background:rgba(155,89,182,0.1); color:#d8b4ff;">
-        <label style="color:#d8b4ff; font-size:13px;">Duration (minutes)</label>
-        <input type="number" id="exerciseDuration" min="1" max="600" placeholder="30"
-               style="padding:10px; border:2px solid #8e44ad; border-radius:8px;
-                      background:rgba(155,89,182,0.1); color:#d8b4ff;">
-        <label style="color:#d8b4ff; font-size:13px;">Notes (optional)</label>
-        <input type="text" id="exerciseNotes" placeholder="e.g. felt great, high intensity"
-               style="padding:10px; border:2px solid #8e44ad; border-radius:8px;
-                      background:rgba(155,89,182,0.1); color:#d8b4ff;">
-        <button id="saveExerciseBtn"
-                style="padding:12px; background:linear-gradient(135deg,#9b59b6,#8e44ad);
-                       border:none; border-radius:8px; color:white; font-weight:600;
-                       cursor:pointer; font-size:15px;">
-          Log Exercise
-        </button>
-        <p id="exerciseResult" style="color:#d8b4ff; font-size:13px; margin:0;"></p>
-      </div>
-      <p class="close-hint">Tap outside to close</p>
-    </div>
-  </div>
 
   <!-- Overlay for macros/micros -->
   <div id="macroOverlay" class="overlay">
@@ -283,15 +203,16 @@
     </div>
   </div>
 
-  <!-- Overlay for food scan -->
+  <!-- Overlay for food scan / add -->
   <div id="scanOverlay" class="overlay">
   <div class="overlay-box">
-    <h2>Log Food</h2>
+    <h2>Add</h2>
 
-    <div style="display:flex; gap:8px; margin-bottom:15px; justify-content:center;">
+    <div style="display:flex; gap:8px; margin-bottom:15px; justify-content:center; flex-wrap:wrap;">
       <button onclick="setFoodMode('scan')" class="mode-btn active" id="btn-scan">📷 Scan</button>
       <button onclick="setFoodMode('search')" class="mode-btn" id="btn-search">🔍 Search</button>
       <button onclick="setFoodMode('manual')" class="mode-btn" id="btn-manual">✏️ Manual</button>
+      <button onclick="setFoodMode('exercise')" class="mode-btn" id="btn-exercise">💪 Exercise</button>
     </div>
 
     <!-- Scan -->
@@ -357,6 +278,38 @@
       </div>
     </div>
 
+    <!-- Exercise -->
+    <div id="exerciseMode" style="display:none;">
+      <p style="color:#9b7acf; font-size:12px; margin:0 0 10px;">Calorie burn is estimated using MET (Metabolic Equivalent) values — a measure of exercise intensity.</p>
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        <select id="exerciseSelect"
+                style="padding:10px; border:2px solid #8e44ad; border-radius:8px;
+                       background:rgba(155,89,182,0.15); color:#d8b4ff; font-size:14px;">
+          <option value="">— Select an exercise —</option>
+          {% for ex in exercise_list %}
+          <option value="{{ ex }}">{{ ex }}</option>
+          {% endfor %}
+          <option value="__custom__">Other (type below)</option>
+        </select>
+        <input type="text" id="exerciseCustomName" placeholder="Custom exercise name"
+               style="display:none; padding:10px; border:2px solid #8e44ad; border-radius:8px;
+                      background:rgba(155,89,182,0.1); color:#d8b4ff;">
+        <input type="number" id="exerciseDuration" min="1" max="600" placeholder="Duration (minutes)"
+               style="padding:10px; border:2px solid #8e44ad; border-radius:8px;
+                      background:rgba(155,89,182,0.1); color:#d8b4ff;">
+        <input type="text" id="exerciseNotes" placeholder="Notes (optional)"
+               style="padding:10px; border:2px solid #8e44ad; border-radius:8px;
+                      background:rgba(155,89,182,0.1); color:#d8b4ff;">
+        <button id="saveExerciseBtn"
+                style="padding:12px; background:linear-gradient(135deg,#9b59b6,#8e44ad);
+                       border:none; border-radius:8px; color:white; font-weight:600;
+                       cursor:pointer; font-size:15px;">
+          Log Exercise
+        </button>
+        <p id="exerciseResult" style="color:#d8b4ff; font-size:13px; margin:0;"></p>
+      </div>
+    </div>
+
     <p class="close-hint">Tap outside to close</p>
   </div>
 </div>
@@ -413,91 +366,6 @@
       gtag('event', 'weight_logged', { event_category: 'tracking' });
     });
     {% endif %}
-
-    // ---------- Exercise Logging ----------
-    const exerciseOverlay = document.getElementById('exerciseOverlay');
-    document.getElementById('logExerciseBtn')?.addEventListener('click', () => {
-      exerciseOverlay.classList.add('active');
-    });
-    exerciseOverlay?.addEventListener('click', (e) => {
-      if (e.target === exerciseOverlay) exerciseOverlay.classList.remove('active');
-    });
-
-    // Show/hide custom exercise input
-    const exerciseSelect = document.getElementById('exerciseSelect');
-    const exerciseCustomName = document.getElementById('exerciseCustomName');
-    exerciseSelect?.addEventListener('change', () => {
-      exerciseCustomName.style.display = exerciseSelect.value === '__custom__' ? 'block' : 'none';
-    });
-
-    document.getElementById('saveExerciseBtn')?.addEventListener('click', async () => {
-      const rawName = exerciseSelect.value === '__custom__'
-        ? exerciseCustomName.value.trim()
-        : exerciseSelect.value;
-      const duration = parseFloat(document.getElementById('exerciseDuration').value);
-      const notes = document.getElementById('exerciseNotes').value.trim();
-      const resultEl = document.getElementById('exerciseResult');
-
-      if (!rawName) { resultEl.textContent = 'Please select or enter an exercise.'; return; }
-      if (!duration || duration <= 0) { resultEl.textContent = 'Please enter a valid duration.'; return; }
-
-      try {
-        const res = await fetch('/api/exercise-log/', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ exercise_name: rawName, duration_minutes: duration, notes }),
-        });
-        const data = await res.json();
-        if (res.ok) {
-          resultEl.textContent = `✅ Logged! ~${data.calories_burned} kcal burned.`;
-          // Update the displayed total
-          const calDisplay = document.getElementById('exerciseCalDisplay');
-          if (calDisplay) {
-            const current = parseFloat(calDisplay.textContent) || 0;
-            calDisplay.textContent = Math.round(current + data.calories_burned);
-          }
-          // Add entry to the list
-          const list = document.getElementById('exerciseLogList');
-          const emptyMsg = list?.querySelector('li:not([data-exercise-id])');
-          if (emptyMsg) emptyMsg.remove();
-          if (list) {
-            const li = document.createElement('li');
-            li.className = 'food-log-item';
-            li.dataset.exerciseId = data.id;
-            li.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(155,89,182,0.2);';
-            li.innerHTML = `<span style="color:#d8b4ff;">${data.exercise_name} — ${Math.round(data.duration_minutes)} min — ${data.calories_burned} kcal</span><button class="delete-exercise-btn" data-exercise-id="${data.id}" title="Delete" style="background:none;border:none;cursor:pointer;font-size:16px;">🗑️</button>`;
-            list.appendChild(li);
-            li.querySelector('.delete-exercise-btn').addEventListener('click', handleDeleteExercise);
-          }
-          // Reset form
-          exerciseSelect.value = '';
-          exerciseCustomName.style.display = 'none';
-          exerciseCustomName.value = '';
-          document.getElementById('exerciseDuration').value = '';
-          document.getElementById('exerciseNotes').value = '';
-        } else {
-          resultEl.textContent = data.error || 'Failed to log exercise.';
-        }
-      } catch (err) {
-        resultEl.textContent = 'Error saving exercise.';
-      }
-    });
-
-    async function handleDeleteExercise(e) {
-      const btn = e.currentTarget;
-      const id = btn.dataset.exerciseId;
-      try {
-        const res = await fetch(`/api/exercise-log/${id}/`, { method: 'DELETE' });
-        if (res.ok) {
-          const li = btn.closest('li');
-          if (li) li.remove();
-        }
-      } catch (err) { /* ignore */ }
-    }
-
-    document.querySelectorAll('.delete-exercise-btn').forEach(btn => {
-      btn.addEventListener('click', handleDeleteExercise);
-    });
   </script>
 </body>
 </html>
