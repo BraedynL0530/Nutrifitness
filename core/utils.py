@@ -534,3 +534,144 @@ def getWeightPrediction(profile):
     except Exception as e:
         print(f"Prediction error: {e}")
         return None
+
+
+# ---------------------------------------------------------------------------
+# Exercise MET table
+# 20 common + 10 smaller/specialty exercises
+# MET values sourced from the Compendium of Physical Activities (Ainsworth et al.)
+# ---------------------------------------------------------------------------
+EXERCISE_MET_TABLE = {
+    # --- 20 Common Exercises ---
+    "Walking (moderate, 3 mph)": 3.5,
+    "Running (6 mph / 10 min mile)": 9.8,
+    "Cycling (moderate, 12-14 mph)": 8.0,
+    "Swimming (moderate effort)": 5.8,
+    "Jump Rope": 11.8,
+    "Elliptical Trainer (moderate)": 5.0,
+    "Rowing Machine (moderate)": 6.0,
+    "Stair Climbing": 8.0,
+    "HIIT": 8.0,
+    "Weight Training (general)": 3.5,
+    "Yoga": 2.5,
+    "Pilates": 3.0,
+    "Basketball (game)": 6.5,
+    "Soccer (game)": 7.0,
+    "Tennis (singles)": 7.3,
+    "Dancing (aerobic)": 4.8,
+    "Hiking (moderate terrain)": 5.3,
+    "Kickboxing / Cardio Kickboxing": 7.5,
+    "Rock Climbing (indoor/bouldering)": 8.0,
+    "CrossFit / Circuit Training": 8.0,
+    # --- 10 Smaller / Specialty Exercises ---
+    "Box Jumps (Plyometrics)": 8.0,
+    "Jump Squats": 5.0,
+    "Burpees": 8.0,
+    "Battle Ropes": 10.0,
+    "Kettlebell Swings": 9.8,
+    "Stretching / Flexibility Work": 2.3,
+    "Foam Rolling / Mobility Work": 1.5,
+    "Tai Chi": 3.0,
+    "Water Aerobics": 5.5,
+    "Hula Hooping": 3.0,
+}
+
+
+def calc_calories_burned(exercise_name, duration_minutes, weight_kg):
+    """
+    Estimate calories burned using the MET formula:
+        calories = MET × weight_kg × duration_hours
+    where MET (Metabolic Equivalent of Task) represents the energy cost
+    relative to sitting at rest (1 MET ≈ 1 kcal/kg/hour).
+
+    Returns (calories_burned: float, met_value: float).
+    Falls back to MET 4.0 (light-moderate activity) for unknown exercises.
+    """
+    met = EXERCISE_MET_TABLE.get(exercise_name, 4.0)
+    duration_hours = duration_minutes / 60.0
+    calories = met * weight_kg * duration_hours
+    return round(calories, 1), met
+
+
+# ---------------------------------------------------------------------------
+# TDEE auto-adjustment based on weight trend + eating habits
+# ---------------------------------------------------------------------------
+MIN_LOGS_REQUIRED = 7      # minimum days with both food and weight data
+TDEE_ADJUST_STEP = 100     # max kcal adjustment per recalculation
+TDEE_MIN = 1200            # hard lower bound
+TDEE_MAX = 6000            # hard upper bound
+# Expected weight change per kcal deficit/surplus over 7 days (kg per 7 days per 500 kcal/day)
+# 1 lb of fat ≈ 3500 kcal → 0.454 kg per 3500 kcal ≈ 0.13 kg / 1000 kcal/day / week
+KG_PER_KCAL = 0.454 / 3500  # kg lost per 1 kcal daily deficit (1 lb fat ≈ 3500 kcal)
+
+
+def auto_adjust_tdee(profile):
+    """
+    Compare the user's actual weight trend against their expected trend given
+    their average calorie intake and current TDEE.  Nudge TDEE up or down by
+    up to TDEE_ADJUST_STEP kcal so that future predictions stay accurate.
+
+    Safeguards:
+    - Requires at least MIN_LOGS_REQUIRED weight logs in the last 14 days.
+    - Only adjusts when the discrepancy exceeds 150 kcal/day equivalent.
+    - Clamps the result to [TDEE_MIN, TDEE_MAX].
+    - Returns the new TDEE value (may be unchanged).
+    """
+    from datetime import timedelta
+    from django.utils import timezone
+    from .models import WeightLog, DailyLog
+
+    today = timezone.localdate()
+    window_start = today - timedelta(days=13)  # 14-day window
+
+    # Collect weight logs in window (ordered oldest→newest)
+    weight_logs = list(
+        WeightLog.objects.filter(profile=profile, date__gte=window_start)
+        .order_by('date', 'id')
+    )
+    if len(weight_logs) < MIN_LOGS_REQUIRED:
+        return profile.get_effective_tdee()
+
+    actual_weight_change = weight_logs[-1].weight - weight_logs[0].weight  # kg
+
+    # Collect daily calorie totals for the same window
+    food_logs = DailyLog.objects.filter(profile=profile, date__gte=window_start)
+    from collections import defaultdict
+    daily_cal = defaultdict(float)
+    for log in food_logs:
+        daily_cal[log.date] += (log.food.calories or 0) * log.quantity
+
+    if not daily_cal:
+        return profile.get_effective_tdee()
+
+    avg_daily_calories = sum(daily_cal.values()) / len(daily_cal)
+    num_days = (weight_logs[-1].date - weight_logs[0].date).days
+    if num_days < 1:
+        return profile.get_effective_tdee()
+
+    effective_tdee = profile.get_effective_tdee() or 2000
+    # Expected weight change given reported intake vs TDEE
+    avg_daily_deficit = effective_tdee - avg_daily_calories  # positive = deficit
+    expected_weight_change = -avg_daily_deficit * num_days * KG_PER_KCAL
+
+    discrepancy_kg = actual_weight_change - expected_weight_change
+    # Convert kg discrepancy to equivalent daily calorie discrepancy
+    if num_days > 0:
+        discrepancy_kcal_per_day = discrepancy_kg / (num_days * KG_PER_KCAL)
+    else:
+        return effective_tdee
+
+    # Only adjust when discrepancy is meaningful (>150 kcal/day)
+    if abs(discrepancy_kcal_per_day) < 150:
+        return effective_tdee
+
+    # Nudge TDEE: if user lost more than expected → TDEE may be overestimated → lower it
+    adjustment = max(-TDEE_ADJUST_STEP, min(TDEE_ADJUST_STEP, -discrepancy_kcal_per_day))
+    new_tdee = round(effective_tdee + adjustment)
+    new_tdee = max(TDEE_MIN, min(TDEE_MAX, new_tdee))
+
+    if new_tdee != effective_tdee:
+        profile.tdee_override = new_tdee
+        profile.save(update_fields=['tdee_override'])
+
+    return new_tdee
